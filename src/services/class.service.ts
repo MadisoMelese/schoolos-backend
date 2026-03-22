@@ -1,0 +1,154 @@
+import Class from "../models/Class.model.js";
+import type { IClass } from "../models/Class.model.js";
+import ApiError from "../utils/ApiError.js";
+import mongoose from "mongoose";
+
+export const createClassService = async (data: Partial<IClass>) => {
+  const existing = await Class.findOne({
+    name: data.name,
+    section: data.section,
+    academicYear: data.academicYear,
+  } as any);
+
+  if (existing) {
+    throw new ApiError(
+      400,
+      "Class with this name, section and academic year already exists",
+    );
+  }
+
+  const newClass = await Class.create(data);
+  return newClass;
+};
+
+export const getAllClassesService = async (filters: {
+  status?: string;
+  grade?: string;
+  academicYear?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const { status, grade, academicYear, search, page = 1, limit = 20 } = filters;
+
+  const query: any = {};
+
+  if (status) query.status = status;
+  if (grade) query.grade = grade;
+  if (academicYear) query.academicYear = academicYear;
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { section: { $regex: search, $options: "i" } },
+      { grade: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const skip = (page - 1) * limit;
+
+  const [classes, total] = await Promise.all([
+    Class.find(query)
+      .populate("teacherId", "firstName lastName teacherId")
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }),
+    Class.countDocuments(query),
+  ]);
+
+  return {
+    classes,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
+export const getClassByIdService = async (id: string) => {
+  const foundClass = await Class.findById(id)
+    .populate("teacherId", "firstName lastName teacherId subject")
+    .populate("students", "firstName lastName studentId status");
+
+  if (!foundClass) {
+    throw new ApiError(404, "Class not found");
+  }
+
+  return foundClass;
+};
+
+export const updateClassService = async (id: string, data: Partial<IClass>) => {
+  const foundClass = await Class.findByIdAndUpdate(id, data, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!foundClass) {
+    throw new ApiError(404, "Class not found");
+  }
+
+  return foundClass;
+};
+
+export const deleteClassService = async (id: string) => {
+  const foundClass = await Class.findByIdAndDelete(id);
+
+  if (!foundClass) {
+    throw new ApiError(404, "Class not found");
+  }
+
+  return foundClass;
+};
+
+export const addStudentToClassService = async (
+  classId: string,
+  studentId: string,
+) => {
+  const foundClass = await Class.findById(classId);
+
+  if (!foundClass) {
+    throw new ApiError(404, "Class not found");
+  }
+
+  if (foundClass.students.length >= foundClass.capacity) {
+    throw new ApiError(400, "Class is at full capacity");
+  }
+
+  const studentObjectId = new mongoose.Types.ObjectId(studentId);
+
+  const alreadyEnrolled = foundClass.students.some(
+    (id) => id.toString() === studentId,
+  );
+
+  if (alreadyEnrolled) {
+    throw new ApiError(400, "Student is already enrolled in this class");
+  }
+
+  foundClass.students.push(studentObjectId);
+  await foundClass.save();
+
+  return foundClass;
+};
+
+export const removeStudentFromClassService = async (
+  classId: string,
+  studentId: string,
+) => {
+  const foundClass = await Class.findById(classId);
+
+  if (!foundClass) {
+    throw new ApiError(404, "Class not found");
+  }
+
+  const exists = foundClass.students.some((id) => id.toString() === studentId);
+
+  if (!exists) {
+    throw new ApiError(400, "Student is not enrolled in this class");
+  }
+
+  foundClass.students = foundClass.students.filter(
+    (id) => id.toString() !== studentId,
+  );
+
+  await foundClass.save();
+
+  return foundClass;
+};
