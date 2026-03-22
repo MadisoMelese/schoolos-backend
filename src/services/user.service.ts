@@ -8,13 +8,7 @@ import ApiError from "../utils/ApiError.js";
 import ms from "ms";
 import type { StringValue } from "ms";
 import env from "../config/env.js";
-import Page from "../models/Page.model.js";
-import type { IPageDocument } from "../models/Page.model.js";
-import Post from "../models/Post.model.js";
-import mongoose from "mongoose";
-import type { IPostDocument } from "../models/Post.model.js";
 import type { UpdateProfileInput } from "../validators/user.validator.js";
-
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,7 +67,6 @@ export const createUser = async (
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  // ─── Create Session ───────────────────────────────────────────────────────
   const session = new Session({
     user: user._id,
     userAgent: req.headers["user-agent"],
@@ -124,73 +117,14 @@ export const getMyProfileService = async (userId: string) => {
   return user;
 };
 
-
-
-export const getFollowedPagesService = async (
-  userId: Types.ObjectId,
-): Promise<IPageDocument[]> => {
-  const pages = await Page.find({ followers: userId, isActive: true })
-    .select("name slug category description avatar isVerified")
-    .sort({ createdAt: -1 });
-
-  return pages;
-};
-
-
-
-
-export const toggleSavePostService = async (
-  userId: Types.ObjectId,
-  postId: string,
-): Promise<{ saved: boolean }> => {
-  const user = await User.findById(userId);
-
-  if (!user) throw new ApiError(404, "User not found");
-
-  const isSaved = user.savedPosts.some(
-    (id) => id.toString() === postId
-  );
-
-  if (isSaved) {
-    user.savedPosts = user.savedPosts.filter(
-      (id) => id.toString() !== postId
-    );
-  } else {
-    user.savedPosts.push(new mongoose.Types.ObjectId(postId));
-  }
-
-  await user.save();
-
-  return { saved: !isSaved };
-};
-
-export const getSavedPostsService = async (
-  userId: Types.ObjectId,
-): Promise<IPostDocument[]> => {
-  const user = await User.findById(userId).populate({
-    path:     "savedPosts",
-    match:    { status: "approved", isPublished: true },
-    populate: { path: "page", select: "name slug avatar category isVerified" },
-    options:  { sort: { createdAt: -1 } },
-  });
-
-  if (!user) throw new ApiError(404, "User not found");
-
-  return user.savedPosts as unknown as IPostDocument[];
-};
-
-
-
-
 export const updateProfileService = async (
   userId: Types.ObjectId,
-  input:  UpdateProfileInput,
+  input: UpdateProfileInput,
 ): Promise<IUserDocument> => {
   const user = await User.findById(userId);
 
   if (!user) throw new ApiError(404, "User not found");
 
-  // Check username uniqueness if being updated
   if (input.username && input.username !== user.username) {
     const taken = await User.findOne({ username: input.username });
     if (taken) throw new ApiError(409, "Username already taken");
