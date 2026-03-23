@@ -1,0 +1,193 @@
+import Book from "../models/Book.model.js";
+import type { IBook } from "../models/Book.model.js";
+import BookBorrow from "../models/BookBorrow.model.js";
+import ApiError from "../utils/ApiError.js";
+
+export const createBookService = async (data: Partial<IBook>) => {
+  const book = await Book.create(data);
+  return book;
+};
+
+export const getAllBooksService = async (filters: {
+  category?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const { category, status, search, page = 1, limit = 20 } = filters;
+
+  const query: any = {};
+
+  if (category) query.category = { $regex: category, $options: "i" };
+  if (status) query.status = status;
+  if (search) {
+    query.$or = [
+      { title: { $regex: search, $options: "i" } },
+      { author: { $regex: search, $options: "i" } },
+      { isbn: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const skip = (page - 1) * limit;
+
+  const [books, total] = await Promise.all([
+    Book.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+    Book.countDocuments(query),
+  ]);
+
+  return {
+    books,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
+export const getBookByIdService = async (id: string) => {
+  const book = await Book.findById(id);
+
+  if (!book) {
+    throw new ApiError(404, "Book not found");
+  }
+
+  return book;
+};
+
+export const updateBookService = async (id: string, data: Partial<IBook>) => {
+  const book = await Book.findByIdAndUpdate(id, data, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!book) {
+    throw new ApiError(404, "Book not found");
+  }
+
+  return book;
+};
+
+export const deleteBookService = async (id: string) => {
+  const activeBorrows = await BookBorrow.countDocuments({
+    bookId: id,
+    status: "borrowed",
+  });
+
+  if (activeBorrows > 0) {
+    throw new ApiError(400, "Cannot delete book with active borrows");
+  }
+
+  const book = await Book.findByIdAndDelete(id);
+
+  if (!book) {
+    throw new ApiError(404, "Book not found");
+  }
+
+  return book;
+};
+
+export const borrowBookService = async (
+  bookId: string,
+  data: {
+    borrowerId: string;
+    borrowerType: "student" | "teacher";
+    dueDate: string;
+  }
+) => {
+  const book = await Book.findById(bookId);
+
+  if (!book) {
+    throw new ApiError(404, "Book not found");
+  }
+
+  if (book.availableCopies <= 0) {
+    throw new ApiError(400, "No copies available for borrowing");
+  }
+
+  const activeBorrow = await BookBorrow.findOne({
+    bookId,
+    borrowerId: data.borrowerId,
+    status: "borrowed",
+  } as any);
+
+  if (activeBorrow) {
+    throw new ApiError(400, "Borrower already has an active borrow for this book");
+  }
+
+  const borrow = await BookBorrow.create({
+    bookId,
+    borrowerId: data.borrowerId,
+    borrowerType: data.borrowerType,
+    dueDate: new Date(data.dueDate),
+  });
+
+  book.availableCopies -= 1;
+  if (book.availableCopies === 0) {
+    book.status = "unavailable";
+  }
+  await book.save();
+
+  return borrow;
+};
+
+export const returnBookService = async (
+  borrowId: string,
+  returnDate?: string
+) => {
+  const borrow = await BookBorrow.findById(borrowId);
+
+  if (!borrow) {
+    throw new ApiError(404, "Borrow record not found");
+  }
+
+  if (borrow.status === "returned") {
+    throw new ApiError(400, "Book already returned");
+  }
+
+  borrow.status = "returned";
+  borrow.returnDate = returnDate ? new Date(returnDate) : new Date();
+  await borrow.save();
+
+  const book = await Book.findById(borrow.bookId);
+  if (book) {
+    book.availableCopies += 1;
+    book.status = "available";
+    await book.save();
+  }
+
+  return borrow;
+};
+
+export const getAllBorrowsService = async (filters: {
+  borrowerId?: string;
+  bookId?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const { borrowerId, bookId, status, page = 1, limit = 20 } = filters;
+
+  const query: any = {};
+
+  if (borrowerId) query.borrowerId = borrowerId;
+  if (bookId) query.bookId = bookId;
+  if (status) query.status = status;
+
+  const skip = (page - 1) * limit;
+
+  const [borrows, total] = await Promise.all([
+    BookBorrow.find(query)
+      .populate("bookId", "title author isbn")
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }),
+    BookBorrow.countDocuments(query),
+  ]);
+
+  return {
+    borrows,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+};

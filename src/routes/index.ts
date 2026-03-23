@@ -14,6 +14,7 @@ import gradeRoutes from "./grade.routes.js";
 import feeRoutes from "./fee.routes.js";
 import announcementRoutes from "./announcement.routes.js";
 import messageRoutes from "./message.routes.js";
+import libraryRoutes from "./library.routes.js";
 
 
 const router = Router();
@@ -34,6 +35,7 @@ router.use("/grades", gradeRoutes);
 router.use("/fees", feeRoutes);
 router.use("/announcements", announcementRoutes);
 router.use("/messages", messageRoutes);
+router.use("/library", libraryRoutes);
 
 
 export default router;
