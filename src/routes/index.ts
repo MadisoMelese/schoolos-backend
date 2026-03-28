@@ -16,7 +16,7 @@ import announcementRoutes from "./announcement.routes.js";
 import messageRoutes from "./message.routes.js";
 import libraryRoutes from "./library.routes.js";
 import hrRoutes from "./hr.routes.js";
-
+import adminRoutes from "./admin.routes.js";
 
 const router = Router();
 
@@ -38,6 +38,6 @@ router.use("/announcements", announcementRoutes);
 router.use("/messages", messageRoutes);
 router.use("/library", libraryRoutes);
 router.use("/hr", hrRoutes);
-
+router.use("/admin", adminRoutes);
 
 export default router;

@@ -13,6 +13,6 @@ const adminDashboard: RequestHandler = (req, res) => {
   });
 };
 
-router.get("/admin-dashboard", protect, authorize("admin"), adminDashboard);
+router.get("/dashboard", protect, authorize("admin"), adminDashboard);
 
 export default router;
