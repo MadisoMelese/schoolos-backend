@@ -48,6 +48,8 @@ const sessionSchema = new Schema<ISessionDocument, SessionModel, ISessionMethods
   { timestamps: true },
 );
 
+sessionSchema.index({ refreshTokenHash: 1 }, { unique: true });
+
 // ─── Instance Methods ─────────────────────────────────────────────────────────
 
 sessionSchema.methods.setRefreshToken = function (refreshToken: string): void {
