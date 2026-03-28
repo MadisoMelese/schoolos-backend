@@ -19,13 +19,11 @@ export interface IUser {
   gender?: "male" | "female" | "other";
   location?: ILocation;
   avatar?: string;
-  following: Types.ObjectId[];
   tokenVersion: number;
   role: "user" | "admin";
   isBlocked: boolean;
   isVerified: boolean;
   isActive: boolean;
-  savedPosts: Types.ObjectId[];
   passwordChangedAt?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
@@ -127,11 +125,6 @@ const userSchema = new Schema<IUserDocument, UserModel, IUserMethods>(
       type: String,
     },
 
-    following: {
-      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-      default: [],
-    },
-
     tokenVersion: {
       type: Number,
       default: 0,
@@ -164,11 +157,6 @@ const userSchema = new Schema<IUserDocument, UserModel, IUserMethods>(
     isActive: {
       type: Boolean,
       default: true,
-    },
-
-    savedPosts: {
-      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
-      default: [],
     },
 
     // =====================
@@ -210,6 +198,8 @@ userSchema.set("toJSON", {
 
     delete obj.password;
     delete obj.tokenVersion;
+    delete obj.following;
+    delete obj.savedPosts;
     delete obj.passwordResetToken;
     delete obj.passwordResetExpires;
     delete obj.emailVerificationToken;

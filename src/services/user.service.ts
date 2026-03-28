@@ -108,9 +108,7 @@ export const changePassword = async (
 };
 
 export const getMyProfileService = async (userId: string) => {
-  const user = await User.findById(userId)
-    .select("-password")
-    .populate("following", "firstname lastname username avatar");
+  const user = await User.findById(userId).select("-password");
 
   if (!user) return null;
 
