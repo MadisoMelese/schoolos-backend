@@ -8,6 +8,7 @@ import {
   recordPaymentService,
   getStudentFeeSummaryService,
 } from "../services/fee.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createFee = async (
   req: Request,
@@ -28,6 +29,9 @@ export const getAllFees = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { studentId, status, academicYear, term, page, limit } = req.query;
 
     const filters: {
@@ -46,7 +50,7 @@ export const getAllFees = async (
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
 
-    const result = await getAllFeesService(filters);
+    const result = await getAllFeesService(filters, scope);
     res.status(200).json({ success: true, data: result, message: "Fees fetched successfully" });
   } catch (error) {
     next(error);
@@ -59,12 +63,15 @@ export const getFeeById = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       res.status(400).json({ success: false, message: "Fee ID is required" });
       return;
     }
-    const fee = await getFeeByIdService(id);
+    const fee = await getFeeByIdService(id, scope);
     res.status(200).json({ success: true, data: fee, message: "Fee fetched successfully" });
   } catch (error) {
     next(error);
@@ -132,6 +139,9 @@ export const getStudentFeeSummary = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { studentId } = req.params;
     if (!studentId || Array.isArray(studentId)) {
       res.status(400).json({ success: false, message: "Student ID is required" });
@@ -140,7 +150,8 @@ export const getStudentFeeSummary = async (
     const { academicYear } = req.query;
     const summary = await getStudentFeeSummaryService(
       studentId,
-      academicYear as string | undefined
+      academicYear as string | undefined,
+      scope,
     );
     res.status(200).json({ success: true, data: summary, message: "Fee summary fetched successfully" });
   } catch (error) {

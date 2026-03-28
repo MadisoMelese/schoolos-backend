@@ -6,6 +6,7 @@ import {
   updateTimetableService,
   deleteTimetableService,
 } from "../services/timetable.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createTimetable = async (
   req: Request,
@@ -26,6 +27,9 @@ export const getAllTimetables = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { classId, teacherId, dayOfWeek, academicYear, page, limit } = req.query;
 
     const filters: {
@@ -44,7 +48,7 @@ export const getAllTimetables = async (
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
 
-    const result = await getAllTimetablesService(filters);
+    const result = await getAllTimetablesService(filters, scope);
     res.status(200).json({ success: true, data: result, message: "Timetables fetched successfully" });
   } catch (error) {
     next(error);
@@ -57,12 +61,15 @@ export const getTimetableById = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       res.status(400).json({ success: false, message: "Timetable ID is required" });
       return;
     }
-    const timetable = await getTimetableByIdService(id);
+    const timetable = await getTimetableByIdService(id, scope);
     res.status(200).json({ success: true, data: timetable, message: "Timetable entry fetched successfully" });
   } catch (error) {
     next(error);

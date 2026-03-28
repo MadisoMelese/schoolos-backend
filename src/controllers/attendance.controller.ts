@@ -8,6 +8,7 @@ import {
   deleteAttendanceService,
   getStudentAttendanceSummaryService,
 } from "../services/attendance.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createAttendance = async (
   req: Request,
@@ -41,6 +42,9 @@ export const getAllAttendance = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { studentId, classId, teacherId, status, date, page, limit } = req.query;
 
     const filters: {
@@ -61,7 +65,7 @@ export const getAllAttendance = async (
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
 
-    const result = await getAllAttendanceService(filters);
+    const result = await getAllAttendanceService(filters, scope);
     res.status(200).json({ success: true, data: result, message: "Attendance fetched successfully" });
   } catch (error) {
     next(error);
@@ -74,12 +78,15 @@ export const getAttendanceById = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       res.status(400).json({ success: false, message: "Attendance ID is required" });
       return;
     }
-    const attendance = await getAttendanceByIdService(id);
+    const attendance = await getAttendanceByIdService(id, scope);
     res.status(200).json({ success: true, data: attendance, message: "Attendance fetched successfully" });
   } catch (error) {
     next(error);
@@ -128,6 +135,9 @@ export const getStudentAttendanceSummary = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { studentId } = req.params;
     if (!studentId || Array.isArray(studentId)) {
       res.status(400).json({ success: false, message: "Student ID is required" });
@@ -136,7 +146,8 @@ export const getStudentAttendanceSummary = async (
     const { classId } = req.query;
     const summary = await getStudentAttendanceSummaryService(
       studentId,
-      classId as string | undefined
+      classId as string | undefined,
+      scope,
     );
     res.status(200).json({ success: true, data: summary, message: "Attendance summary fetched successfully" });
   } catch (error) {

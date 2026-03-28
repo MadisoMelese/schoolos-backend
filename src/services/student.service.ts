@@ -1,11 +1,16 @@
 import Student from "../models/Student.model.js";
 import type { IStudent } from "../models/Student.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { SchoolReadScope } from "../types/schoolReadScope.js";
+import {
+  assertSchoolDataAccess,
+  idInObjectIdList,
+} from "../utils/schoolReadAccess.js";
 
 export const createStudentService = async (data: Partial<IStudent>) => {
   const existing = await Student.findOne({
     $or: [{ studentId: data.studentId }, { userId: data.userId }],
-  } as any);
+  } as Record<string, unknown>);
 
   if (existing) {
     throw new ApiError(400, "Student with this ID or user already exists");
@@ -15,16 +20,21 @@ export const createStudentService = async (data: Partial<IStudent>) => {
   return student;
 };
 
-export const getAllStudentsService = async (filters: {
-  status?: string;
-  classId?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}) => {
+export const getAllStudentsService = async (
+  filters: {
+    status?: string;
+    classId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  },
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
   const { status, classId, search, page = 1, limit = 20 } = filters;
 
-  const query: any = {};
+  const query: Record<string, unknown> = {};
 
   if (status) query.status = status;
   if (classId) query.classId = classId;
@@ -34,6 +44,16 @@ export const getAllStudentsService = async (filters: {
       { lastName: { $regex: search, $options: "i" } },
       { studentId: { $regex: search, $options: "i" } },
     ];
+  }
+
+  if (scope.kind === "student") {
+    query._id = scope.studentDocId;
+  } else if (scope.kind === "teacher") {
+    if (scope.rosterStudentIds.length === 0) {
+      query._id = { $in: [] };
+    } else {
+      query._id = { $in: scope.rosterStudentIds };
+    }
   }
 
   const skip = (page - 1) * limit;
@@ -56,7 +76,23 @@ export const getAllStudentsService = async (filters: {
   };
 };
 
-export const getStudentByIdService = async (id: string) => {
+export const getStudentByIdService = async (
+  id: string,
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
+  if (scope.kind === "student" && id !== scope.studentDocId.toString()) {
+    throw new ApiError(403, "You can only view your own student record.");
+  }
+
+  if (
+    scope.kind === "teacher" &&
+    !idInObjectIdList(id, scope.rosterStudentIds)
+  ) {
+    throw new ApiError(403, "You do not have access to this student.");
+  }
+
   const student = await Student.findById(id)
     .populate("classId", "name section")
     .populate("userId", "email");
@@ -70,7 +106,7 @@ export const getStudentByIdService = async (id: string) => {
 
 export const updateStudentService = async (
   id: string,
-  data: Partial<IStudent>
+  data: Partial<IStudent>,
 ) => {
   const student = await Student.findByIdAndUpdate(id, data, {
     new: true,

@@ -1,6 +1,11 @@
 import Timetable from "../models/Timetable.model.js";
 import type { ITimetable } from "../models/Timetable.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { SchoolReadScope } from "../types/schoolReadScope.js";
+import {
+  assertSchoolDataAccess,
+  idInObjectIdList,
+} from "../utils/schoolReadAccess.js";
 
 export const createTimetableService = async (data: Partial<ITimetable>) => {
   const conflict = await Timetable.findOne({
@@ -14,7 +19,7 @@ export const createTimetableService = async (data: Partial<ITimetable>) => {
         endTime: { $gt: data.startTime },
       },
     ],
-  } as any);
+  } as Record<string, unknown>);
 
   if (conflict) {
     throw new ApiError(400, "Teacher already has a class at this time");
@@ -24,22 +29,44 @@ export const createTimetableService = async (data: Partial<ITimetable>) => {
   return timetable;
 };
 
-export const getAllTimetablesService = async (filters: {
-  classId?: string;
-  teacherId?: string;
-  dayOfWeek?: string;
-  academicYear?: string;
-  page?: number;
-  limit?: number;
-}) => {
-  const { classId, teacherId, dayOfWeek, academicYear, page = 1, limit = 20 } = filters;
+export const getAllTimetablesService = async (
+  filters: {
+    classId?: string;
+    teacherId?: string;
+    dayOfWeek?: string;
+    academicYear?: string;
+    page?: number;
+    limit?: number;
+  },
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
 
-  const query: any = {};
+  const { classId, teacherId, dayOfWeek, academicYear, page = 1, limit = 20 } =
+    filters;
+
+  const query: Record<string, unknown> = {};
 
   if (classId) query.classId = classId;
   if (teacherId) query.teacherId = teacherId;
   if (dayOfWeek) query.dayOfWeek = dayOfWeek;
   if (academicYear) query.academicYear = academicYear;
+
+  if (scope.kind === "teacher") {
+    const orClause: Record<string, unknown>[] = [
+      { teacherId: scope.teacherDocId },
+    ];
+    if (scope.taughtClassIds.length > 0) {
+      orClause.push({ classId: { $in: scope.taughtClassIds } });
+    }
+    query.$or = orClause;
+  } else if (scope.kind === "student") {
+    if (scope.classIds.length === 0) {
+      query._id = { $in: [] };
+    } else {
+      query.classId = { $in: scope.classIds };
+    }
+  }
 
   const skip = (page - 1) * limit;
 
@@ -61,21 +88,44 @@ export const getAllTimetablesService = async (filters: {
   };
 };
 
-export const getTimetableByIdService = async (id: string) => {
+export const getTimetableByIdService = async (
+  id: string,
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
+  const raw = await Timetable.findById(id).lean();
+  if (!raw) {
+    throw new ApiError(404, "Timetable entry not found");
+  }
+
+  const classIdStr = raw.classId.toString();
+  const teacherIdStr = raw.teacherId.toString();
+
+  if (scope.kind === "teacher") {
+    const ownsSlot = teacherIdStr === scope.teacherDocId.toString();
+    const teachesClass = idInObjectIdList(classIdStr, scope.taughtClassIds);
+    if (!ownsSlot && !teachesClass) {
+      throw new ApiError(403, "You do not have access to this timetable.");
+    }
+  }
+
+  if (scope.kind === "student") {
+    if (!idInObjectIdList(classIdStr, scope.classIds)) {
+      throw new ApiError(403, "You do not have access to this timetable.");
+    }
+  }
+
   const timetable = await Timetable.findById(id)
     .populate("classId", "name section grade")
     .populate("teacherId", "firstName lastName teacherId subject");
 
-  if (!timetable) {
-    throw new ApiError(404, "Timetable entry not found");
-  }
-
-  return timetable;
+  return timetable!;
 };
 
 export const updateTimetableService = async (
   id: string,
-  data: Partial<ITimetable>
+  data: Partial<ITimetable>,
 ) => {
   const timetable = await Timetable.findByIdAndUpdate(id, data, {
     new: true,

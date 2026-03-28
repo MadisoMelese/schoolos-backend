@@ -2,13 +2,18 @@ import Class from "../models/Class.model.js";
 import type { IClass } from "../models/Class.model.js";
 import ApiError from "../utils/ApiError.js";
 import mongoose from "mongoose";
+import type { SchoolReadScope } from "../types/schoolReadScope.js";
+import {
+  assertSchoolDataAccess,
+  idInObjectIdList,
+} from "../utils/schoolReadAccess.js";
 
 export const createClassService = async (data: Partial<IClass>) => {
   const existing = await Class.findOne({
     name: data.name,
     section: data.section,
     academicYear: data.academicYear,
-  } as any);
+  } as Record<string, unknown>);
 
   if (existing) {
     throw new ApiError(
@@ -21,17 +26,22 @@ export const createClassService = async (data: Partial<IClass>) => {
   return newClass;
 };
 
-export const getAllClassesService = async (filters: {
-  status?: string;
-  grade?: string;
-  academicYear?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}) => {
+export const getAllClassesService = async (
+  filters: {
+    status?: string;
+    grade?: string;
+    academicYear?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  },
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
   const { status, grade, academicYear, search, page = 1, limit = 20 } = filters;
 
-  const query: any = {};
+  const query: Record<string, unknown> = {};
 
   if (status) query.status = status;
   if (grade) query.grade = grade;
@@ -42,6 +52,22 @@ export const getAllClassesService = async (filters: {
       { section: { $regex: search, $options: "i" } },
       { grade: { $regex: search, $options: "i" } },
     ];
+  }
+
+  if (scope.kind === "teacher") {
+    if (scope.taughtClassIds.length === 0) {
+      query._id = { $in: [] };
+    } else {
+      query._id = { $in: scope.taughtClassIds };
+    }
+  } else if (scope.kind === "student") {
+    const orClause: Record<string, unknown>[] = [
+      { students: scope.studentDocId },
+    ];
+    if (scope.classIds.length > 0) {
+      orClause.push({ _id: { $in: scope.classIds } });
+    }
+    query.$or = orClause;
   }
 
   const skip = (page - 1) * limit;
@@ -63,7 +89,22 @@ export const getAllClassesService = async (filters: {
   };
 };
 
-export const getClassByIdService = async (id: string) => {
+export const getClassByIdService = async (id: string, scope: SchoolReadScope) => {
+  assertSchoolDataAccess(scope);
+
+  if (scope.kind === "teacher" && !idInObjectIdList(id, scope.taughtClassIds)) {
+    throw new ApiError(403, "You do not have access to this class.");
+  }
+
+  if (scope.kind === "student") {
+    const allowed =
+      idInObjectIdList(id, scope.classIds) ||
+      (await Class.exists({ _id: id, students: scope.studentDocId }));
+    if (!allowed) {
+      throw new ApiError(403, "You do not have access to this class.");
+    }
+  }
+
   const foundClass = await Class.findById(id)
     .populate("teacherId", "firstName lastName teacherId subject")
     .populate("students", "firstName lastName studentId status");
@@ -115,7 +156,7 @@ export const addStudentToClassService = async (
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
 
   const alreadyEnrolled = foundClass.students.some(
-    (id) => id.toString() === studentId,
+    (sid) => sid.toString() === studentId,
   );
 
   if (alreadyEnrolled) {
@@ -138,14 +179,14 @@ export const removeStudentFromClassService = async (
     throw new ApiError(404, "Class not found");
   }
 
-  const exists = foundClass.students.some((id) => id.toString() === studentId);
+  const exists = foundClass.students.some((sid) => sid.toString() === studentId);
 
   if (!exists) {
     throw new ApiError(400, "Student is not enrolled in this class");
   }
 
   foundClass.students = foundClass.students.filter(
-    (id) => id.toString() !== studentId,
+    (sid) => sid.toString() !== studentId,
   );
 
   await foundClass.save();

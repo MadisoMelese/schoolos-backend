@@ -1,28 +1,55 @@
 import Fee from "../models/Fee.model.js";
 import type { IFee } from "../models/Fee.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { SchoolReadScope } from "../types/schoolReadScope.js";
+import {
+  assertSchoolDataAccess,
+  idInObjectIdList,
+} from "../utils/schoolReadAccess.js";
 
 export const createFeeService = async (data: Partial<IFee>) => {
   const fee = await Fee.create(data);
   return fee;
 };
 
-export const getAllFeesService = async (filters: {
-  studentId?: string;
-  status?: string;
-  academicYear?: string;
-  term?: string;
-  page?: number;
-  limit?: number;
-}) => {
-  const { studentId, status, academicYear, term, page = 1, limit = 20 } = filters;
+export const getAllFeesService = async (
+  filters: {
+    studentId?: string;
+    status?: string;
+    academicYear?: string;
+    term?: string;
+    page?: number;
+    limit?: number;
+  },
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
 
-  const query: any = {};
+  const { studentId, status, academicYear, term, page = 1, limit = 20 } =
+    filters;
 
-  if (studentId) query.studentId = studentId;
+  const query: Record<string, unknown> = {};
+
   if (status) query.status = status;
   if (academicYear) query.academicYear = academicYear;
   if (term) query.term = term;
+
+  if (scope.kind === "student") {
+    query.studentId = scope.studentDocId;
+  } else if (scope.kind === "teacher") {
+    if (studentId && !idInObjectIdList(studentId, scope.rosterStudentIds)) {
+      throw new ApiError(403, "You do not have access to these fee records.");
+    }
+    if (studentId) {
+      query.studentId = studentId;
+    } else if (scope.rosterStudentIds.length === 0) {
+      query._id = { $in: [] };
+    } else {
+      query.studentId = { $in: scope.rosterStudentIds };
+    }
+  } else {
+    if (studentId) query.studentId = studentId;
+  }
 
   const skip = (page - 1) * limit;
 
@@ -43,14 +70,36 @@ export const getAllFeesService = async (filters: {
   };
 };
 
-export const getFeeByIdService = async (id: string) => {
+export const getFeeByIdService = async (id: string, scope: SchoolReadScope) => {
+  assertSchoolDataAccess(scope);
+
   const fee = await Fee.findById(id).populate(
     "studentId",
-    "firstName lastName studentId"
+    "firstName lastName studentId",
   );
 
   if (!fee) {
     throw new ApiError(404, "Fee record not found");
+  }
+
+  const rawStudentId = fee.studentId as unknown;
+  const studentIdStr =
+    rawStudentId &&
+    typeof rawStudentId === "object" &&
+    "_id" in (rawStudentId as object)
+      ? String(
+          (rawStudentId as { _id: { toString: () => string } })._id,
+        )
+      : String(rawStudentId);
+
+  if (scope.kind === "student") {
+    if (studentIdStr !== scope.studentDocId.toString()) {
+      throw new ApiError(403, "You do not have access to this fee record.");
+    }
+  } else if (scope.kind === "teacher") {
+    if (!idInObjectIdList(studentIdStr, scope.rosterStudentIds)) {
+      throw new ApiError(403, "You do not have access to this fee record.");
+    }
   }
 
   return fee;
@@ -82,7 +131,7 @@ export const deleteFeeService = async (id: string) => {
 export const recordPaymentService = async (
   id: string,
   paidAmount: number,
-  paidDate?: string
+  paidDate?: string,
 ) => {
   const fee = await Fee.findById(id);
 
@@ -110,9 +159,22 @@ export const recordPaymentService = async (
 
 export const getStudentFeeSummaryService = async (
   studentId: string,
-  academicYear?: string
+  academicYear: string | undefined,
+  scope: SchoolReadScope,
 ) => {
-  const query: any = { studentId };
+  assertSchoolDataAccess(scope);
+
+  if (scope.kind === "student") {
+    if (studentId !== scope.studentDocId.toString()) {
+      throw new ApiError(403, "You can only view your own fee summary.");
+    }
+  } else if (scope.kind === "teacher") {
+    if (!idInObjectIdList(studentId, scope.rosterStudentIds)) {
+      throw new ApiError(403, "You do not have access to this student's fees.");
+    }
+  }
+
+  const query: Record<string, unknown> = { studentId };
   if (academicYear) query.academicYear = academicYear;
 
   const fees = await Fee.find(query);

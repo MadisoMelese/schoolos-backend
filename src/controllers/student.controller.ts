@@ -6,15 +6,22 @@ import {
   updateStudentService,
   deleteStudentService,
 } from "../services/student.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createStudent = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const student = await createStudentService(req.body);
-    res.status(201).json({ success: true, data: student, message: "Student created successfully" });
+    res
+      .status(201)
+      .json({
+        success: true,
+        data: student,
+        message: "Student created successfully",
+      });
   } catch (error) {
     next(error);
   }
@@ -23,9 +30,12 @@ export const createStudent = async (
 export const getAllStudents = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { status, classId, search, page, limit } = req.query;
 
     const filters: {
@@ -42,8 +52,12 @@ export const getAllStudents = async (
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
 
-    const result = await getAllStudentsService(filters);
-    res.status(200).json({ success: true, data: result, message: "Students fetched successfully" });
+    const result = await getAllStudentsService(filters, scope);
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Students fetched successfully",
+    });
   } catch (error) {
     next(error);
   }
@@ -52,16 +66,23 @@ export const getAllStudents = async (
 export const getStudentById = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       res.status(400).json({ success: false, message: "Student ID is required" });
       return;
     }
-    const student = await getStudentByIdService(id);
-    res.status(200).json({ success: true, data: student, message: "Student fetched successfully" });
+    const student = await getStudentByIdService(id, scope);
+    res.status(200).json({
+      success: true,
+      data: student,
+      message: "Student fetched successfully",
+    });
   } catch (error) {
     next(error);
   }
@@ -70,7 +91,7 @@ export const getStudentById = async (
 export const updateStudent = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { id } = req.params;
@@ -79,7 +100,11 @@ export const updateStudent = async (
       return;
     }
     const student = await updateStudentService(id, req.body);
-    res.status(200).json({ success: true, data: student, message: "Student updated successfully" });
+    res.status(200).json({
+      success: true,
+      data: student,
+      message: "Student updated successfully",
+    });
   } catch (error) {
     next(error);
   }
@@ -88,7 +113,7 @@ export const updateStudent = async (
 export const deleteStudent = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { id } = req.params;
@@ -97,7 +122,11 @@ export const deleteStudent = async (
       return;
     }
     await deleteStudentService(id);
-    res.status(200).json({ success: true, data: null, message: "Student deleted successfully" });
+    res.status(200).json({
+      success: true,
+      data: null,
+      message: "Student deleted successfully",
+    });
   } catch (error) {
     next(error);
   }

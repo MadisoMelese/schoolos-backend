@@ -8,6 +8,7 @@ import {
   deleteGradeService,
   getStudentGradeSummaryService,
 } from "../services/grade.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createGrade = async (
   req: Request,
@@ -41,6 +42,9 @@ export const getAllGrades = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { studentId, examId, classId, teacherId, subject, academicYear, page, limit } = req.query;
 
     const filters: {
@@ -63,7 +67,7 @@ export const getAllGrades = async (
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
 
-    const result = await getAllGradesService(filters);
+    const result = await getAllGradesService(filters, scope);
     res.status(200).json({ success: true, data: result, message: "Grades fetched successfully" });
   } catch (error) {
     next(error);
@@ -76,12 +80,15 @@ export const getGradeById = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       res.status(400).json({ success: false, message: "Grade ID is required" });
       return;
     }
-    const grade = await getGradeByIdService(id);
+    const grade = await getGradeByIdService(id, scope);
     res.status(200).json({ success: true, data: grade, message: "Grade fetched successfully" });
   } catch (error) {
     next(error);
@@ -130,6 +137,9 @@ export const getStudentGradeSummary = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { studentId } = req.params;
     if (!studentId || Array.isArray(studentId)) {
       res.status(400).json({ success: false, message: "Student ID is required" });
@@ -138,7 +148,8 @@ export const getStudentGradeSummary = async (
     const { academicYear } = req.query;
     const summary = await getStudentGradeSummaryService(
       studentId,
-      academicYear as string | undefined
+      academicYear as string | undefined,
+      scope,
     );
     res.status(200).json({ success: true, data: summary, message: "Grade summary fetched successfully" });
   } catch (error) {

@@ -9,6 +9,7 @@ import {
   returnBookService,
   getAllBorrowsService,
 } from "../services/library.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createBook = async (
   req: Request,
@@ -149,6 +150,9 @@ export const getAllBorrows = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { borrowerId, bookId, status, page, limit } = req.query;
 
     const filters: {
@@ -165,7 +169,7 @@ export const getAllBorrows = async (
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
 
-    const result = await getAllBorrowsService(filters);
+    const result = await getAllBorrowsService(filters, scope);
     res.status(200).json({ success: true, data: result, message: "Borrows fetched successfully" });
   } catch (error) {
     next(error);

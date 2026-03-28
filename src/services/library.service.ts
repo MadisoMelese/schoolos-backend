@@ -1,7 +1,13 @@
+import mongoose from "mongoose";
 import Book from "../models/Book.model.js";
 import type { IBook } from "../models/Book.model.js";
 import BookBorrow from "../models/BookBorrow.model.js";
+import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import ApiError from "../utils/ApiError.js";
+import {
+  assertSchoolDataAccess,
+  idInObjectIdList,
+} from "../utils/schoolReadAccess.js";
 
 export const createBookService = async (data: Partial<IBook>) => {
   const book = await Book.create(data);
@@ -158,20 +164,69 @@ export const returnBookService = async (
   return borrow;
 };
 
-export const getAllBorrowsService = async (filters: {
-  borrowerId?: string;
-  bookId?: string;
-  status?: string;
-  page?: number;
-  limit?: number;
-}) => {
+export const getAllBorrowsService = async (
+  filters: {
+    borrowerId?: string;
+    bookId?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  },
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
   const { borrowerId, bookId, status, page = 1, limit = 20 } = filters;
 
-  const query: any = {};
+  const query: Record<string, unknown> = {};
 
-  if (borrowerId) query.borrowerId = borrowerId;
   if (bookId) query.bookId = bookId;
   if (status) query.status = status;
+
+  if (scope.kind === "student") {
+    if (
+      borrowerId &&
+      borrowerId !== scope.studentDocId.toString()
+    ) {
+      throw new ApiError(403, "You do not have access to these borrow records.");
+    }
+    query.borrowerId = scope.studentDocId;
+    query.borrowerType = "student";
+  } else if (scope.kind === "teacher") {
+    if (
+      borrowerId &&
+      !idInObjectIdList(borrowerId, [
+        ...scope.rosterStudentIds,
+        scope.teacherDocId,
+      ])
+    ) {
+      throw new ApiError(403, "You do not have access to these borrow records.");
+    }
+    if (borrowerId) {
+      query.borrowerId =
+        borrowerId === scope.teacherDocId.toString()
+          ? scope.teacherDocId
+          : new mongoose.Types.ObjectId(borrowerId);
+      query.borrowerType =
+        borrowerId === scope.teacherDocId.toString() ? "teacher" : "student";
+    } else {
+      const orClause: Record<string, unknown>[] = [
+        {
+          borrowerType: "teacher",
+          borrowerId: scope.teacherDocId,
+        },
+      ];
+      if (scope.rosterStudentIds.length > 0) {
+        orClause.push({
+          borrowerType: "student",
+          borrowerId: { $in: scope.rosterStudentIds },
+        });
+      }
+      query.$or = orClause;
+    }
+  } else {
+    if (borrowerId) query.borrowerId = borrowerId;
+  }
 
   const skip = (page - 1) * limit;
 

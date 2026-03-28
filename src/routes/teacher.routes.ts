@@ -7,6 +7,7 @@ import {
   deleteTeacher,
 } from "../controllers/teacher.controller.js";
 import protect from "../middlewares/auth.middleware.js";
+import loadSchoolReadScope from "../middlewares/schoolReadScope.middleware.js";
 import adminOnly from "../middlewares/adminOnly.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
 import {
@@ -17,6 +18,7 @@ import {
 const router = Router();
 
 router.use(protect);
+router.use(loadSchoolReadScope);
 
 router.get("/", getAllTeachers);
 router.get("/:id", getTeacherById);

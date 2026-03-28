@@ -1,11 +1,36 @@
+import type { Types } from "mongoose";
+import mongoose from "mongoose";
 import Teacher from "../models/Teacher.model.js";
+import Class from "../models/Class.model.js";
 import type { ITeacher } from "../models/Teacher.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { SchoolReadScope } from "../types/schoolReadScope.js";
+import {
+  assertSchoolDataAccess,
+  idInObjectIdList,
+} from "../utils/schoolReadAccess.js";
+
+const visibleTeacherIdsForStudent = async (
+  studentDocId: Types.ObjectId,
+  classIds: Types.ObjectId[],
+): Promise<Types.ObjectId[]> => {
+  const classes = await Class.find({
+    $or: [{ _id: { $in: classIds } }, { students: studentDocId }],
+  })
+    .select("teacherId")
+    .lean();
+
+  const set = new Set<string>();
+  for (const c of classes) {
+    if (c.teacherId) set.add(c.teacherId.toString());
+  }
+  return [...set].map((id) => new mongoose.Types.ObjectId(id));
+};
 
 export const createTeacherService = async (data: Partial<ITeacher>) => {
   const existing = await Teacher.findOne({
     $or: [{ teacherId: data.teacherId }, { userId: data.userId }],
-  } as any);
+  } as Record<string, unknown>);
 
   if (existing) {
     throw new ApiError(400, "Teacher with this ID or user already exists");
@@ -15,15 +40,20 @@ export const createTeacherService = async (data: Partial<ITeacher>) => {
   return teacher;
 };
 
-export const getAllTeachersService = async (filters: {
-  status?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}) => {
+export const getAllTeachersService = async (
+  filters: {
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  },
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
   const { status, search, page = 1, limit = 20 } = filters;
 
-  const query: any = {};
+  const query: Record<string, unknown> = {};
 
   if (status) query.status = status;
   if (search) {
@@ -33,6 +63,18 @@ export const getAllTeachersService = async (filters: {
       { teacherId: { $regex: search, $options: "i" } },
       { subject: { $regex: search, $options: "i" } },
     ];
+  }
+
+  if (scope.kind === "teacher") {
+    query._id = scope.teacherDocId;
+  }
+
+  if (scope.kind === "student") {
+    const ids = await visibleTeacherIdsForStudent(
+      scope.studentDocId,
+      scope.classIds,
+    );
+    query._id = { $in: ids.length ? ids : [] };
   }
 
   const skip = (page - 1) * limit;
@@ -54,7 +96,26 @@ export const getAllTeachersService = async (filters: {
   };
 };
 
-export const getTeacherByIdService = async (id: string) => {
+export const getTeacherByIdService = async (
+  id: string,
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
+  if (scope.kind === "teacher" && id !== scope.teacherDocId.toString()) {
+    throw new ApiError(403, "You can only view your own teacher profile.");
+  }
+
+  if (scope.kind === "student") {
+    const ids = await visibleTeacherIdsForStudent(
+      scope.studentDocId,
+      scope.classIds,
+    );
+    if (!idInObjectIdList(id, ids)) {
+      throw new ApiError(403, "You do not have access to this teacher.");
+    }
+  }
+
   const teacher = await Teacher.findById(id).populate("userId", "email");
 
   if (!teacher) {
@@ -66,7 +127,7 @@ export const getTeacherByIdService = async (id: string) => {
 
 export const updateTeacherService = async (
   id: string,
-  data: Partial<ITeacher>
+  data: Partial<ITeacher>,
 ) => {
   const teacher = await Teacher.findByIdAndUpdate(id, data, {
     new: true,

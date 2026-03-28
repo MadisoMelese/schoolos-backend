@@ -9,6 +9,7 @@ import {
   getStudentAttendanceSummary,
 } from "../controllers/attendance.controller.js";
 import protect from "../middlewares/auth.middleware.js";
+import loadSchoolReadScope from "../middlewares/schoolReadScope.middleware.js";
 import adminOnly from "../middlewares/adminOnly.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
 import {
@@ -20,10 +21,11 @@ import {
 const router = Router();
 
 router.use(protect);
+router.use(loadSchoolReadScope);
 
 router.get("/", getAllAttendance);
-router.get("/:id", getAttendanceById);
 router.get("/summary/:studentId", getStudentAttendanceSummary);
+router.get("/:id", getAttendanceById);
 
 router.post("/", adminOnly, validate(createAttendanceSchema), createAttendance);
 router.post("/bulk", adminOnly, validate(bulkAttendanceSchema), bulkCreateAttendance);

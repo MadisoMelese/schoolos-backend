@@ -6,6 +6,7 @@ import {
   updateExamService,
   deleteExamService,
 } from "../services/exam.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createExam = async (
   req: Request,
@@ -26,6 +27,9 @@ export const getAllExams = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { classId, teacherId, subject, status, academicYear, page, limit } = req.query;
 
     const filters: {
@@ -46,7 +50,7 @@ export const getAllExams = async (
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
 
-    const result = await getAllExamsService(filters);
+    const result = await getAllExamsService(filters, scope);
     res.status(200).json({ success: true, data: result, message: "Exams fetched successfully" });
   } catch (error) {
     next(error);
@@ -59,12 +63,15 @@ export const getExamById = async (
   next: NextFunction
 ) => {
   try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       res.status(400).json({ success: false, message: "Exam ID is required" });
       return;
     }
-    const exam = await getExamByIdService(id);
+    const exam = await getExamByIdService(id, scope);
     res.status(200).json({ success: true, data: exam, message: "Exam fetched successfully" });
   } catch (error) {
     next(error);
