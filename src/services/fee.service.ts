@@ -1,13 +1,20 @@
 import Fee from "../models/Fee.model.js";
 import type { IFee } from "../models/Fee.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createFeeService = async (data: Partial<IFee>) => {
+export const createFeeService = async (
+  data: Partial<IFee>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const fee = await Fee.create(data);
   return fee;
 };
@@ -105,7 +112,13 @@ export const getFeeByIdService = async (id: string, scope: SchoolReadScope) => {
   return fee;
 };
 
-export const updateFeeService = async (id: string, data: Partial<IFee>) => {
+export const updateFeeService = async (
+  id: string,
+  data: Partial<IFee>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const fee = await Fee.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -118,7 +131,12 @@ export const updateFeeService = async (id: string, data: Partial<IFee>) => {
   return fee;
 };
 
-export const deleteFeeService = async (id: string) => {
+export const deleteFeeService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const fee = await Fee.findByIdAndDelete(id);
 
   if (!fee) {
@@ -131,8 +149,11 @@ export const deleteFeeService = async (id: string) => {
 export const recordPaymentService = async (
   id: string,
   paidAmount: number,
-  paidDate?: string,
+  paidDate: string | undefined,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const fee = await Fee.findById(id);
 
   if (!fee) {

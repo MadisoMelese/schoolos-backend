@@ -7,6 +7,7 @@ import {
   deleteStaffService,
   getHRSummaryService,
 } from "../services/hr.service.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createStaff = async (
   req: Request,
@@ -14,7 +15,8 @@ export const createStaff = async (
   next: NextFunction
 ) => {
   try {
-    const staff = await createStaffService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const staff = await createStaffService(req.body, req.user);
     res.status(201).json({ success: true, data: staff, message: "Staff member created successfully" });
   } catch (error) {
     next(error);
@@ -81,7 +83,8 @@ export const updateStaff = async (
       res.status(400).json({ success: false, message: "Staff ID is required" });
       return;
     }
-    const staff = await updateStaffService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const staff = await updateStaffService(id, req.body, req.user);
     res.status(200).json({ success: true, data: staff, message: "Staff member updated successfully" });
   } catch (error) {
     next(error);
@@ -99,7 +102,8 @@ export const deleteStaff = async (
       res.status(400).json({ success: false, message: "Staff ID is required" });
       return;
     }
-    await deleteStaffService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteStaffService(id, req.user);
     res.status(200).json({ success: true, data: null, message: "Staff member deleted successfully" });
   } catch (error) {
     next(error);

@@ -3,10 +3,12 @@ import mongoose from "mongoose";
 import Teacher from "../models/Teacher.model.js";
 import Class from "../models/Class.model.js";
 import type { ITeacher } from "../models/Teacher.model.js";
+import type { IUserDocument } from "../models/User.model.js";
 import ApiError from "../utils/ApiError.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
@@ -27,7 +29,12 @@ const visibleTeacherIdsForStudent = async (
   return [...set].map((id) => new mongoose.Types.ObjectId(id));
 };
 
-export const createTeacherService = async (data: Partial<ITeacher>) => {
+export const createTeacherService = async (
+  data: Partial<ITeacher>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const existing = await Teacher.findOne({
     $or: [{ teacherId: data.teacherId }, { userId: data.userId }],
   } as Record<string, unknown>);
@@ -128,7 +135,10 @@ export const getTeacherByIdService = async (
 export const updateTeacherService = async (
   id: string,
   data: Partial<ITeacher>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const teacher = await Teacher.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -141,7 +151,12 @@ export const updateTeacherService = async (
   return teacher;
 };
 
-export const deleteTeacherService = async (id: string) => {
+export const deleteTeacherService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const teacher = await Teacher.findByIdAndDelete(id);
 
   if (!teacher) {

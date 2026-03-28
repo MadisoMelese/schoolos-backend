@@ -16,7 +16,8 @@ export const createGrade = async (
   next: NextFunction
 ) => {
   try {
-    const grade = await createGradeService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const grade = await createGradeService(req.body, req.user);
     res.status(201).json({ success: true, data: grade, message: "Grade created successfully" });
   } catch (error) {
     next(error);
@@ -29,7 +30,8 @@ export const bulkCreateGrade = async (
   next: NextFunction
 ) => {
   try {
-    const result = await bulkCreateGradeService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const result = await bulkCreateGradeService(req.body, req.user);
     res.status(201).json({ success: true, data: result, message: "Bulk grades created successfully" });
   } catch (error) {
     next(error);
@@ -106,7 +108,8 @@ export const updateGrade = async (
       res.status(400).json({ success: false, message: "Grade ID is required" });
       return;
     }
-    const grade = await updateGradeService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const grade = await updateGradeService(id, req.body, req.user);
     res.status(200).json({ success: true, data: grade, message: "Grade updated successfully" });
   } catch (error) {
     next(error);
@@ -124,7 +127,8 @@ export const deleteGrade = async (
       res.status(400).json({ success: false, message: "Grade ID is required" });
       return;
     }
-    await deleteGradeService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteGradeService(id, req.user);
     res.status(200).json({ success: true, data: null, message: "Grade deleted successfully" });
   } catch (error) {
     next(error);

@@ -14,7 +14,8 @@ export const createExam = async (
   next: NextFunction
 ) => {
   try {
-    const exam = await createExamService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const exam = await createExamService(req.body, req.user);
     res.status(201).json({ success: true, data: exam, message: "Exam created successfully" });
   } catch (error) {
     next(error);
@@ -89,7 +90,8 @@ export const updateExam = async (
       res.status(400).json({ success: false, message: "Exam ID is required" });
       return;
     }
-    const exam = await updateExamService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const exam = await updateExamService(id, req.body, req.user);
     res.status(200).json({ success: true, data: exam, message: "Exam updated successfully" });
   } catch (error) {
     next(error);
@@ -107,7 +109,8 @@ export const deleteExam = async (
       res.status(400).json({ success: false, message: "Exam ID is required" });
       return;
     }
-    await deleteExamService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteExamService(id, req.user);
     res.status(200).json({ success: true, data: null, message: "Exam deleted successfully" });
   } catch (error) {
     next(error);

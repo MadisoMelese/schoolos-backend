@@ -17,7 +17,8 @@ export const createBook = async (
   next: NextFunction
 ) => {
   try {
-    const book = await createBookService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const book = await createBookService(req.body, req.user);
     res.status(201).json({ success: true, data: book, message: "Book created successfully" });
   } catch (error) {
     next(error);
@@ -82,7 +83,8 @@ export const updateBook = async (
       res.status(400).json({ success: false, message: "Book ID is required" });
       return;
     }
-    const book = await updateBookService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const book = await updateBookService(id, req.body, req.user);
     res.status(200).json({ success: true, data: book, message: "Book updated successfully" });
   } catch (error) {
     next(error);
@@ -100,7 +102,8 @@ export const deleteBook = async (
       res.status(400).json({ success: false, message: "Book ID is required" });
       return;
     }
-    await deleteBookService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteBookService(id, req.user);
     res.status(200).json({ success: true, data: null, message: "Book deleted successfully" });
   } catch (error) {
     next(error);
@@ -118,7 +121,8 @@ export const borrowBook = async (
       res.status(400).json({ success: false, message: "Book ID is required" });
       return;
     }
-    const borrow = await borrowBookService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const borrow = await borrowBookService(id, req.body, req.user);
     res.status(201).json({ success: true, data: borrow, message: "Book borrowed successfully" });
   } catch (error) {
     next(error);
@@ -137,7 +141,8 @@ export const returnBook = async (
       return;
     }
     const { returnDate } = req.body;
-    const borrow = await returnBookService(borrowId, returnDate);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const borrow = await returnBookService(borrowId, returnDate, req.user);
     res.status(200).json({ success: true, data: borrow, message: "Book returned successfully" });
   } catch (error) {
     next(error);

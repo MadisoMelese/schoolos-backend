@@ -17,8 +17,15 @@ export const createMessage = async (
 ) => {
   try {
     if (!req.user) throw new ApiError(401, "Unauthorized");
+    const { receiverId, subject, content } = req.body as {
+      receiverId: string;
+      subject: string;
+      content: string;
+    };
     const message = await createMessageService({
-      ...req.body,
+      receiverId,
+      subject,
+      content,
       senderId: req.user._id,
     });
     res.status(201).json({ success: true, data: message, message: "Message sent successfully" });

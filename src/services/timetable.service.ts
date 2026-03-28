@@ -1,13 +1,20 @@
 import Timetable from "../models/Timetable.model.js";
 import type { ITimetable } from "../models/Timetable.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createTimetableService = async (data: Partial<ITimetable>) => {
+export const createTimetableService = async (
+  data: Partial<ITimetable>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const conflict = await Timetable.findOne({
     teacherId: data.teacherId,
     dayOfWeek: data.dayOfWeek,
@@ -126,7 +133,10 @@ export const getTimetableByIdService = async (
 export const updateTimetableService = async (
   id: string,
   data: Partial<ITimetable>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const timetable = await Timetable.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -139,7 +149,12 @@ export const updateTimetableService = async (
   return timetable;
 };
 
-export const deleteTimetableService = async (id: string) => {
+export const deleteTimetableService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const timetable = await Timetable.findByIdAndDelete(id);
 
   if (!timetable) {

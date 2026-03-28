@@ -16,7 +16,8 @@ export const createClass = async (
   next: NextFunction,
 ) => {
   try {
-    const newClass = await createClassService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const newClass = await createClassService(req.body, req.user);
     res.status(201).json({
       success: true,
       data: newClass,
@@ -101,7 +102,8 @@ export const updateClass = async (
       res.status(400).json({ success: false, message: "Class ID is required" });
       return;
     }
-    const foundClass = await updateClassService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const foundClass = await updateClassService(id, req.body, req.user);
     res.status(200).json({
       success: true,
       data: foundClass,
@@ -123,7 +125,8 @@ export const deleteClass = async (
       res.status(400).json({ success: false, message: "Class ID is required" });
       return;
     }
-    await deleteClassService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteClassService(id, req.user);
     res.status(200).json({
       success: true,
       data: null,
@@ -146,7 +149,8 @@ export const addStudentToClass = async (
       return;
     }
     const { studentId } = req.body;
-    const foundClass = await addStudentToClassService(id, studentId);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const foundClass = await addStudentToClassService(id, studentId, req.user);
     res.status(200).json({
       success: true,
       data: foundClass,
@@ -170,7 +174,12 @@ export const removeStudentFromClass = async (
         .json({ success: false, message: "Class ID and Student ID are required" });
       return;
     }
-    const foundClass = await removeStudentFromClassService(id, studentId);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const foundClass = await removeStudentFromClassService(
+      id,
+      studentId,
+      req.user,
+    );
     res.status(200).json({
       success: true,
       data: foundClass,

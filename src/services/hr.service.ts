@@ -1,8 +1,15 @@
 import Staff from "../models/Staff.model.js";
 import type { IStaff } from "../models/Staff.model.js";
+import type { IUserDocument } from "../models/User.model.js";
 import ApiError from "../utils/ApiError.js";
+import { assertSchoolMutationAllowed } from "../utils/schoolReadAccess.js";
 
-export const createStaffService = async (data: Partial<IStaff>) => {
+export const createStaffService = async (
+  data: Partial<IStaff>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const existing = await Staff.findOne({
     $or: [{ staffId: data.staffId }, { userId: data.userId }],
   } as any);
@@ -70,8 +77,11 @@ export const getStaffByIdService = async (id: string) => {
 
 export const updateStaffService = async (
   id: string,
-  data: Partial<IStaff>
+  data: Partial<IStaff>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const staff = await Staff.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -84,7 +94,12 @@ export const updateStaffService = async (
   return staff;
 };
 
-export const deleteStaffService = async (id: string) => {
+export const deleteStaffService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const staff = await Staff.findByIdAndDelete(id);
 
   if (!staff) {

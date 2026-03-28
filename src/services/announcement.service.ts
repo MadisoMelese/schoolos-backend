@@ -1,10 +1,15 @@
 import Announcement from "../models/Announcement.model.js";
 import type { IAnnouncement } from "../models/Announcement.model.js";
+import type { IUserDocument } from "../models/User.model.js";
 import ApiError from "../utils/ApiError.js";
+import { assertSchoolMutationAllowed } from "../utils/schoolReadAccess.js";
 
 export const createAnnouncementService = async (
-  data: Partial<IAnnouncement>
+  data: Partial<IAnnouncement>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const announcement = await Announcement.create(data);
   return announcement;
 };
@@ -58,8 +63,11 @@ export const getAnnouncementByIdService = async (id: string) => {
 
 export const updateAnnouncementService = async (
   id: string,
-  data: Partial<IAnnouncement>
+  data: Partial<IAnnouncement>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const announcement = await Announcement.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -72,7 +80,12 @@ export const updateAnnouncementService = async (
   return announcement;
 };
 
-export const deleteAnnouncementService = async (id: string) => {
+export const deleteAnnouncementService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const announcement = await Announcement.findByIdAndDelete(id);
 
   if (!announcement) {

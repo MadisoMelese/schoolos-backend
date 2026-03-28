@@ -2,13 +2,20 @@ import Class from "../models/Class.model.js";
 import type { IClass } from "../models/Class.model.js";
 import ApiError from "../utils/ApiError.js";
 import mongoose from "mongoose";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createClassService = async (data: Partial<IClass>) => {
+export const createClassService = async (
+  data: Partial<IClass>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const existing = await Class.findOne({
     name: data.name,
     section: data.section,
@@ -116,7 +123,13 @@ export const getClassByIdService = async (id: string, scope: SchoolReadScope) =>
   return foundClass;
 };
 
-export const updateClassService = async (id: string, data: Partial<IClass>) => {
+export const updateClassService = async (
+  id: string,
+  data: Partial<IClass>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const foundClass = await Class.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -129,7 +142,12 @@ export const updateClassService = async (id: string, data: Partial<IClass>) => {
   return foundClass;
 };
 
-export const deleteClassService = async (id: string) => {
+export const deleteClassService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const foundClass = await Class.findByIdAndDelete(id);
 
   if (!foundClass) {
@@ -142,7 +160,10 @@ export const deleteClassService = async (id: string) => {
 export const addStudentToClassService = async (
   classId: string,
   studentId: string,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const foundClass = await Class.findById(classId);
 
   if (!foundClass) {
@@ -172,7 +193,10 @@ export const addStudentToClassService = async (
 export const removeStudentFromClassService = async (
   classId: string,
   studentId: string,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const foundClass = await Class.findById(classId);
 
   if (!foundClass) {

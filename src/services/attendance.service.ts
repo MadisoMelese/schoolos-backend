@@ -1,13 +1,20 @@
 import Attendance from "../models/Attendance.model.js";
 import type { IAttendance } from "../models/Attendance.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createAttendanceService = async (data: Partial<IAttendance>) => {
+export const createAttendanceService = async (
+  data: Partial<IAttendance>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const existing = await Attendance.findOne({
     studentId: data.studentId,
     classId: data.classId,
@@ -25,12 +32,17 @@ export const createAttendanceService = async (data: Partial<IAttendance>) => {
   return attendance;
 };
 
-export const bulkCreateAttendanceService = async (data: {
-  classId: string;
-  teacherId: string;
-  date: string;
-  records: { studentId: string; status: string; note?: string }[];
-}) => {
+export const bulkCreateAttendanceService = async (
+  data: {
+    classId: string;
+    teacherId: string;
+    date: string;
+    records: { studentId: string; status: string; note?: string }[];
+  },
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const { classId, teacherId, date, records } = data;
 
   const attendanceDocs = records.map((record) => ({
@@ -192,7 +204,10 @@ export const getAttendanceByIdService = async (
 export const updateAttendanceService = async (
   id: string,
   data: Partial<IAttendance>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const attendance = await Attendance.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -205,7 +220,12 @@ export const updateAttendanceService = async (
   return attendance;
 };
 
-export const deleteAttendanceService = async (id: string) => {
+export const deleteAttendanceService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const attendance = await Attendance.findByIdAndDelete(id);
 
   if (!attendance) {

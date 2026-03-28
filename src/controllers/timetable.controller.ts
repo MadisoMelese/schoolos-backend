@@ -14,7 +14,8 @@ export const createTimetable = async (
   next: NextFunction
 ) => {
   try {
-    const timetable = await createTimetableService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const timetable = await createTimetableService(req.body, req.user);
     res.status(201).json({ success: true, data: timetable, message: "Timetable entry created successfully" });
   } catch (error) {
     next(error);
@@ -87,7 +88,8 @@ export const updateTimetable = async (
       res.status(400).json({ success: false, message: "Timetable ID is required" });
       return;
     }
-    const timetable = await updateTimetableService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const timetable = await updateTimetableService(id, req.body, req.user);
     res.status(200).json({ success: true, data: timetable, message: "Timetable entry updated successfully" });
   } catch (error) {
     next(error);
@@ -105,7 +107,8 @@ export const deleteTimetable = async (
       res.status(400).json({ success: false, message: "Timetable ID is required" });
       return;
     }
-    await deleteTimetableService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteTimetableService(id, req.user);
     res.status(200).json({ success: true, data: null, message: "Timetable entry deleted successfully" });
   } catch (error) {
     next(error);

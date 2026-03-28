@@ -2,14 +2,21 @@ import mongoose from "mongoose";
 import Book from "../models/Book.model.js";
 import type { IBook } from "../models/Book.model.js";
 import BookBorrow from "../models/BookBorrow.model.js";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import ApiError from "../utils/ApiError.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createBookService = async (data: Partial<IBook>) => {
+export const createBookService = async (
+  data: Partial<IBook>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const book = await Book.create(data);
   return book;
 };
@@ -60,7 +67,13 @@ export const getBookByIdService = async (id: string) => {
   return book;
 };
 
-export const updateBookService = async (id: string, data: Partial<IBook>) => {
+export const updateBookService = async (
+  id: string,
+  data: Partial<IBook>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const book = await Book.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -73,7 +86,12 @@ export const updateBookService = async (id: string, data: Partial<IBook>) => {
   return book;
 };
 
-export const deleteBookService = async (id: string) => {
+export const deleteBookService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const activeBorrows = await BookBorrow.countDocuments({
     bookId: id,
     status: "borrowed",
@@ -98,8 +116,11 @@ export const borrowBookService = async (
     borrowerId: string;
     borrowerType: "student" | "teacher";
     dueDate: string;
-  }
+  },
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const book = await Book.findById(bookId);
 
   if (!book) {
@@ -138,8 +159,11 @@ export const borrowBookService = async (
 
 export const returnBookService = async (
   borrowId: string,
-  returnDate?: string
+  returnDate: string | undefined,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const borrow = await BookBorrow.findById(borrowId);
 
   if (!borrow) {

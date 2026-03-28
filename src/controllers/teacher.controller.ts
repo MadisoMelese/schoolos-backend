@@ -14,7 +14,8 @@ export const createTeacher = async (
   next: NextFunction,
 ) => {
   try {
-    const teacher = await createTeacherService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const teacher = await createTeacherService(req.body, req.user);
     res.status(201).json({
       success: true,
       data: teacher,
@@ -95,7 +96,8 @@ export const updateTeacher = async (
       res.status(400).json({ success: false, message: "Teacher ID is required" });
       return;
     }
-    const teacher = await updateTeacherService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const teacher = await updateTeacherService(id, req.body, req.user);
     res.status(200).json({
       success: true,
       data: teacher,
@@ -117,7 +119,8 @@ export const deleteTeacher = async (
       res.status(400).json({ success: false, message: "Teacher ID is required" });
       return;
     }
-    await deleteTeacherService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteTeacherService(id, req.user);
     res.status(200).json({
       success: true,
       data: null,

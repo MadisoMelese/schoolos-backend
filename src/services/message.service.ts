@@ -1,9 +1,32 @@
+import type { Types } from "mongoose";
 import Message from "../models/Message.model.js";
-import type { IMessage } from "../models/Message.model.js";
+import User from "../models/User.model.js";
 import ApiError from "../utils/ApiError.js";
 
-export const createMessageService = async (data: Partial<IMessage>) => {
-  const message = await Message.create(data);
+export interface CreateMessageInput {
+  receiverId: string;
+  subject: string;
+  content: string;
+  senderId: Types.ObjectId;
+}
+
+export const createMessageService = async (data: CreateMessageInput) => {
+  if (data.receiverId === data.senderId.toString()) {
+    throw new ApiError(400, "Cannot send a message to yourself.");
+  }
+
+  const receiver = await User.findById(data.receiverId).select("_id");
+  if (!receiver) {
+    throw new ApiError(400, "Receiver not found.");
+  }
+
+  const message = await Message.create({
+    senderId: data.senderId,
+    receiverId: data.receiverId,
+    subject: data.subject,
+    content: data.content,
+  });
+
   return message;
 };
 
@@ -13,11 +36,11 @@ export const getInboxService = async (
     isRead?: boolean;
     page?: number;
     limit?: number;
-  }
+  },
 ) => {
   const { isRead, page = 1, limit = 20 } = filters;
 
-  const query: any = { receiverId: userId };
+  const query: Record<string, unknown> = { receiverId: userId };
   if (isRead !== undefined) query.isRead = isRead;
 
   const skip = (page - 1) * limit;
@@ -44,11 +67,11 @@ export const getSentService = async (
   filters: {
     page?: number;
     limit?: number;
-  }
+  },
 ) => {
   const { page = 1, limit = 20 } = filters;
 
-  const query: any = { senderId: userId };
+  const query: Record<string, unknown> = { senderId: userId };
 
   const skip = (page - 1) * limit;
 
@@ -69,6 +92,13 @@ export const getSentService = async (
   };
 };
 
+const participantIdString = (ref: unknown): string => {
+  if (ref && typeof ref === "object" && "_id" in ref) {
+    return String((ref as { _id: { toString: () => string } })._id);
+  }
+  return String(ref);
+};
+
 export const getMessageByIdService = async (id: string, userId: string) => {
   const message = await Message.findById(id)
     .populate("senderId", "firstname lastname")
@@ -78,10 +108,10 @@ export const getMessageByIdService = async (id: string, userId: string) => {
     throw new ApiError(404, "Message not found");
   }
 
-  if (
-    message.senderId._id.toString() !== userId &&
-    message.receiverId._id.toString() !== userId
-  ) {
+  const senderStr = participantIdString(message.senderId);
+  const receiverStr = participantIdString(message.receiverId);
+
+  if (senderStr !== userId && receiverStr !== userId) {
     throw new ApiError(403, "You are not authorized to view this message");
   }
 
@@ -96,7 +126,10 @@ export const markAsReadService = async (id: string, userId: string) => {
   }
 
   if (message.receiverId.toString() !== userId) {
-    throw new ApiError(403, "You are not authorized to mark this message as read");
+    throw new ApiError(
+      403,
+      "You are not authorized to mark this message as read",
+    );
   }
 
   message.isRead = true;

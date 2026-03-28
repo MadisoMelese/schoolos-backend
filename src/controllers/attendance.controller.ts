@@ -16,7 +16,8 @@ export const createAttendance = async (
   next: NextFunction
 ) => {
   try {
-    const attendance = await createAttendanceService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const attendance = await createAttendanceService(req.body, req.user);
     res.status(201).json({ success: true, data: attendance, message: "Attendance recorded successfully" });
   } catch (error) {
     next(error);
@@ -29,7 +30,8 @@ export const bulkCreateAttendance = async (
   next: NextFunction
 ) => {
   try {
-    const result = await bulkCreateAttendanceService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const result = await bulkCreateAttendanceService(req.body, req.user);
     res.status(201).json({ success: true, data: result, message: "Bulk attendance recorded successfully" });
   } catch (error) {
     next(error);
@@ -104,7 +106,8 @@ export const updateAttendance = async (
       res.status(400).json({ success: false, message: "Attendance ID is required" });
       return;
     }
-    const attendance = await updateAttendanceService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const attendance = await updateAttendanceService(id, req.body, req.user);
     res.status(200).json({ success: true, data: attendance, message: "Attendance updated successfully" });
   } catch (error) {
     next(error);
@@ -122,7 +125,8 @@ export const deleteAttendance = async (
       res.status(400).json({ success: false, message: "Attendance ID is required" });
       return;
     }
-    await deleteAttendanceService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteAttendanceService(id, req.user);
     res.status(200).json({ success: true, data: null, message: "Attendance record deleted successfully" });
   } catch (error) {
     next(error);

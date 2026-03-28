@@ -1,13 +1,20 @@
 import Grade from "../models/Grade.model.js";
 import type { IGrade } from "../models/Grade.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createGradeService = async (data: Partial<IGrade>) => {
+export const createGradeService = async (
+  data: Partial<IGrade>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const existing = await Grade.findOne({
     studentId: data.studentId,
     examId: data.examId,
@@ -24,19 +31,24 @@ export const createGradeService = async (data: Partial<IGrade>) => {
   return grade;
 };
 
-export const bulkCreateGradeService = async (data: {
-  examId: string;
-  classId: string;
-  teacherId: string;
-  subject: string;
-  academicYear: string;
-  records: {
-    studentId: string;
-    marksObtained: number;
-    totalMarks: number;
-    remarks?: string;
-  }[];
-}) => {
+export const bulkCreateGradeService = async (
+  data: {
+    examId: string;
+    classId: string;
+    teacherId: string;
+    subject: string;
+    academicYear: string;
+    records: {
+      studentId: string;
+      marksObtained: number;
+      totalMarks: number;
+      remarks?: string;
+    }[];
+  },
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const { examId, classId, teacherId, subject, academicYear, records } = data;
 
   const gradeDocs = records.map((record) => ({
@@ -194,7 +206,10 @@ export const getGradeByIdService = async (id: string, scope: SchoolReadScope) =>
 export const updateGradeService = async (
   id: string,
   data: Partial<IGrade>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const grade = await Grade.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -207,7 +222,12 @@ export const updateGradeService = async (
   return grade;
 };
 
-export const deleteGradeService = async (id: string) => {
+export const deleteGradeService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const grade = await Grade.findByIdAndDelete(id);
 
   if (!grade) {

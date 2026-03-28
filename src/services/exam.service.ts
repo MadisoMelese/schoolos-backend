@@ -1,13 +1,20 @@
 import Exam from "../models/Exam.model.js";
 import type { IExam } from "../models/Exam.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createExamService = async (data: Partial<IExam>) => {
+export const createExamService = async (
+  data: Partial<IExam>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const exam = await Exam.create(data);
   return exam;
 };
@@ -114,7 +121,10 @@ export const getExamByIdService = async (id: string, scope: SchoolReadScope) => 
 export const updateExamService = async (
   id: string,
   data: Partial<IExam>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const exam = await Exam.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -127,7 +137,12 @@ export const updateExamService = async (
   return exam;
 };
 
-export const deleteExamService = async (id: string) => {
+export const deleteExamService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const exam = await Exam.findByIdAndDelete(id);
 
   if (!exam) {

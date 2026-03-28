@@ -16,7 +16,8 @@ export const createFee = async (
   next: NextFunction
 ) => {
   try {
-    const fee = await createFeeService(req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const fee = await createFeeService(req.body, req.user);
     res.status(201).json({ success: true, data: fee, message: "Fee created successfully" });
   } catch (error) {
     next(error);
@@ -89,7 +90,8 @@ export const updateFee = async (
       res.status(400).json({ success: false, message: "Fee ID is required" });
       return;
     }
-    const fee = await updateFeeService(id, req.body);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const fee = await updateFeeService(id, req.body, req.user);
     res.status(200).json({ success: true, data: fee, message: "Fee updated successfully" });
   } catch (error) {
     next(error);
@@ -107,7 +109,8 @@ export const deleteFee = async (
       res.status(400).json({ success: false, message: "Fee ID is required" });
       return;
     }
-    await deleteFeeService(id);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    await deleteFeeService(id, req.user);
     res.status(200).json({ success: true, data: null, message: "Fee deleted successfully" });
   } catch (error) {
     next(error);
@@ -126,7 +129,8 @@ export const recordPayment = async (
       return;
     }
     const { paidAmount, paidDate } = req.body;
-    const fee = await recordPaymentService(id, paidAmount, paidDate);
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const fee = await recordPaymentService(id, paidAmount, paidDate, req.user);
     res.status(200).json({ success: true, data: fee, message: "Payment recorded successfully" });
   } catch (error) {
     next(error);

@@ -1,13 +1,20 @@
 import Student from "../models/Student.model.js";
 import type { IStudent } from "../models/Student.model.js";
 import ApiError from "../utils/ApiError.js";
+import type { IUserDocument } from "../models/User.model.js";
 import type { SchoolReadScope } from "../types/schoolReadScope.js";
 import {
   assertSchoolDataAccess,
+  assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
 
-export const createStudentService = async (data: Partial<IStudent>) => {
+export const createStudentService = async (
+  data: Partial<IStudent>,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const existing = await Student.findOne({
     $or: [{ studentId: data.studentId }, { userId: data.userId }],
   } as Record<string, unknown>);
@@ -107,7 +114,10 @@ export const getStudentByIdService = async (
 export const updateStudentService = async (
   id: string,
   data: Partial<IStudent>,
+  actor: IUserDocument,
 ) => {
+  assertSchoolMutationAllowed(actor);
+
   const student = await Student.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -120,7 +130,12 @@ export const updateStudentService = async (
   return student;
 };
 
-export const deleteStudentService = async (id: string) => {
+export const deleteStudentService = async (
+  id: string,
+  actor: IUserDocument,
+) => {
+  assertSchoolMutationAllowed(actor);
+
   const student = await Student.findByIdAndDelete(id);
 
   if (!student) {
