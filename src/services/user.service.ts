@@ -80,6 +80,58 @@ export const createUser = async (
   return { user, accessToken, refreshToken };
 };
 
+export const getAllUsersService = async (filters: {
+  search?: string;
+  role?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}) => {
+  const { search, role, isActive, page = 1, limit = 20 } = filters;
+
+  const query: Record<string, unknown> = {};
+
+  if (search) {
+    query.$or = [
+      { firstname: { $regex: search, $options: "i" } },
+      { lastname: { $regex: search, $options: "i" } },
+      { username: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  if (role) query.role = role;
+  if (isActive !== undefined) query.isActive = isActive;
+
+  const skip = (page - 1) * limit;
+
+  const [users, total] = await Promise.all([
+    User.find(query)
+      .select("-password")
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }),
+    User.countDocuments(query),
+  ]);
+
+  return {
+    users,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
+export const getUserByIdService = async (id: string) => {
+  const user = await User.findById(id).select("-password");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return user;
+}; 
+
 export const changePassword = async (
   userId: Types.ObjectId,
   currentPassword: string,
