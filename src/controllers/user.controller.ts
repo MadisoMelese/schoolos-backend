@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import type { StringValue } from "ms";
-import { createUser, changePassword, getMyProfileService, updateProfileService } from "../services/user.service.js";
+import { createUser, changePassword, getMyProfileService, updateProfileService, getAllUsersService, getUserByIdService } from "../services/user.service.js";
 import ApiError from "../utils/ApiError.js";
 import env from "../config/env.js";
 import ms from "ms";
@@ -24,6 +24,57 @@ export const create: RequestHandler = async (req, res, next) => {
         user: result.user,
         accessToken: result.accessToken,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllUsers: RequestHandler = async (req, res, next) => {
+  try {
+    const { search, role, isActive, page, limit } = req.query;
+
+    const filters: {
+      search?: string;
+      role?: string;
+      isActive?: boolean;
+      page?: number;
+      limit?: number;
+    } = {};
+
+    if (search) filters.search = search as string;
+    if (role) filters.role = role as string;
+    if (isActive !== undefined) filters.isActive = isActive === "true";
+    if (page) filters.page = Number(page);
+    if (limit) filters.limit = Number(limit);
+
+    const result = await getAllUsersService(filters);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Users fetched successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserById: RequestHandler = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ success: false, message: "User ID is required" });
+      return;
+    }
+
+    const user = await getUserByIdService(id);
+
+    res.status(200).json({
+      success: true,
+      data: { user },
+      message: "User fetched successfully",
     });
   } catch (error) {
     next(error);
