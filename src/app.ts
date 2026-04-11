@@ -1,3 +1,5 @@
+import dns from 'node:dns/promises';
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 import express from "express";
 import type { Application, Request, Response } from "express";
 import cors from "cors";

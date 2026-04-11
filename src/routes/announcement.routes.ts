@@ -27,4 +27,4 @@ router.post("/", adminOnly, validate(createAnnouncementSchema), createAnnounceme
 router.put("/:id", adminOnly, validate(updateAnnouncementSchema), updateAnnouncement);
 router.delete("/:id", adminOnly, deleteAnnouncement);
 
-export default router;
+export default router;   

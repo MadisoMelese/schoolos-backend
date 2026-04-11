@@ -5,7 +5,7 @@ export interface IClass extends Document {
   section: string;
   grade: string;
   teacherId?: mongoose.Types.ObjectId;
-  students: mongoose.Types.ObjectId[];
+  students?: mongoose.Types.ObjectId[];
   capacity: number;
   academicYear: string;
   status: "active" | "inactive";
