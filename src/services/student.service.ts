@@ -67,7 +67,7 @@ export const getAllStudentsService = async (
 
   const [students, total] = await Promise.all([
     Student.find(query)
-      .populate("classId", "name section")
+      .populate("classId", "name section grade")
       .populate("userId", "email")
       .skip(skip)
       .limit(limit)
