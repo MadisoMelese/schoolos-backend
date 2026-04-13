@@ -11,21 +11,15 @@ import {
 
 const router = Router();
 
-
-router.get("/",  userController.getAllUsers);
-router.get("/:id", userController.getUserById);
+// Public routes
 router.post(
   "/",
   registerLimiter,
   validate(registerSchema),
   userController.create,
 );
-router.put(
-  "/me/password",
-  protect,
-  validate(changePasswordSchema),
-  userController.updatePassword,
-);
+
+// Protected routes - MUST come before /:id to avoid "me" being treated as ObjectId
 router.get("/me", protect, userController.getMyProfile);
 router.put(
   "/me",
@@ -33,5 +27,15 @@ router.put(
   validate(updateProfileSchema),
   userController.updateProfile,
 );
+router.put(
+  "/me/password",
+  protect,
+  validate(changePasswordSchema),
+  userController.updatePassword,
+);
+
+// General routes
+router.get("/",  userController.getAllUsers);
+router.get("/:id", userController.getUserById);
 
 export default router;
