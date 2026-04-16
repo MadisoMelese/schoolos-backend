@@ -250,12 +250,24 @@ export const confirmPasswordResetService = async (
 
   // Update password
   user.password = newPassword;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
   user.passwordChangedAt = new Date();
   user.tokenVersion += 1;
-
-  await user.save();
+  
+  // Remove reset token fields
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $set: {
+        password: user.password,
+        passwordChangedAt: user.passwordChangedAt,
+        tokenVersion: user.tokenVersion,
+      },
+      $unset: {
+        passwordResetToken: "",
+        passwordResetExpires: "",
+      },
+    }
+  );
 
   // Clear all sessions for this user
   await Session.deleteMany({ user: user._id });
