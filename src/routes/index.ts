@@ -3,6 +3,7 @@ import userRoutes from "./user.routes.js";
 import sessionRoutes from "./session.routes.js";
 import refreshRoutes from "./refresh.routes.js";
 import logoutRoutes from "./logout.routes.js";
+import authRoutes from "./auth.routes.js";
 
 import studentRoutes from "./student.routes.js";
 import teacherRoutes from "./teacher.routes.js";
@@ -24,6 +25,7 @@ router.use("/users", userRoutes);
 router.use("/sessions", sessionRoutes);
 router.use("/token", refreshRoutes);
 router.use("/logout", logoutRoutes);
+router.use("/auth", authRoutes);
 
 
 router.use("/students", studentRoutes);
