@@ -5,6 +5,7 @@ import User from "../models/User.model.js";
 import Session from "../models/Session.model.js";
 import type { IUserDocument } from "../models/User.model.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import { sendPasswordResetEmail } from "../utils/emailService.js";
 import ApiError from "../utils/ApiError.js";
 import ms from "ms";
 import type { StringValue } from "ms";
@@ -203,8 +204,10 @@ export const requestPasswordResetService = async (email: string): Promise<{ mess
     return { message: "If an account exists with this email, a password reset link will be sent." };
   }
 
-  // Generate reset token (simple random token for now)
-  const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  // Generate reset token (32 character random string)
+  const resetToken = Math.random().toString(36).substring(2, 15) + 
+                     Math.random().toString(36).substring(2, 15) +
+                     Math.random().toString(36).substring(2, 15);
   
   // Hash the token for storage
   const hashedToken = await bcrypt.hash(resetToken, 10);
@@ -215,9 +218,8 @@ export const requestPasswordResetService = async (email: string): Promise<{ mess
   
   await user.save();
 
-  // TODO: Send email with reset link
-  // For now, return the token in response (ONLY FOR DEVELOPMENT)
-  console.log(`Password reset token for ${email}: ${resetToken}`);
+  // Send password reset email
+  await sendPasswordResetEmail(user.email, resetToken, user.firstname);
 
   return { message: "If an account exists with this email, a password reset link will be sent." };
 };
