@@ -248,8 +248,11 @@ export const confirmPasswordResetService = async (
     throw new ApiError(400, "Reset token has expired");
   }
 
-  // Update password (will be hashed by pre-save middleware)
-  user.password = newPassword;
+  // Hash the new password manually
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  // Update password with hashed value
+  user.password = hashedPassword;
   user.passwordChangedAt = new Date();
   user.tokenVersion += 1;
   
@@ -257,7 +260,7 @@ export const confirmPasswordResetService = async (
   user.passwordResetToken = undefined as any;
   user.passwordResetExpires = undefined as any;
 
-  // Save user (triggers pre-save middleware to hash password)
+  // Save user (password is already hashed, so pre-save middleware won't hash again)
   await user.save();
 
   // Clear all sessions for this user
