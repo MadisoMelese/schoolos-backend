@@ -29,11 +29,18 @@ export const createSession = async (
   req: Request
 ): Promise<CreateSessionResult> => {
   const user = await User.findOne({ email }).select("+password");
+  if(!user){
+    throw new ApiError(401, "user with this email not found!");
+  }
 
   const passwordHash = user?.password ?? DUMMY_HASH;
 
   const isMatch = await bcrypt.compare(password, passwordHash);
 
+
+  if (!isMatch) {
+    throw new ApiError(401, "Invalid password credentials");
+  }
   if (!user || !isMatch) {
     throw new ApiError(401, "Invalid credentials");
   }

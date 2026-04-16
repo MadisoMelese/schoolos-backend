@@ -11,16 +11,7 @@ dotenv.config();
  */
 
 const testUsers = [
-  {
-    firstname: "Madis",
-    lastname: "Madiso",
-    username: "madis.madiso",
-    email: "madisomelese2@gmail.com",
-    password: "@madisha5423$",
-    role: "admin",
-    isVerified: true,
-    isActive: true,
-  },
+
   {
     firstname: "John",
     lastname: "Student",
