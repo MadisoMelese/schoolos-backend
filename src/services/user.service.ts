@@ -248,26 +248,17 @@ export const confirmPasswordResetService = async (
     throw new ApiError(400, "Reset token has expired");
   }
 
-  // Update password
+  // Update password (will be hashed by pre-save middleware)
   user.password = newPassword;
   user.passwordChangedAt = new Date();
   user.tokenVersion += 1;
   
-  // Remove reset token fields
-  await User.updateOne(
-    { _id: user._id },
-    {
-      $set: {
-        password: user.password,
-        passwordChangedAt: user.passwordChangedAt,
-        tokenVersion: user.tokenVersion,
-      },
-      $unset: {
-        passwordResetToken: "",
-        passwordResetExpires: "",
-      },
-    }
-  );
+  // Clear reset token fields by setting to undefined (will be removed by save)
+  user.passwordResetToken = undefined as any;
+  user.passwordResetExpires = undefined as any;
+
+  // Save user (triggers pre-save middleware to hash password)
+  await user.save();
 
   // Clear all sessions for this user
   await Session.deleteMany({ user: user._id });
