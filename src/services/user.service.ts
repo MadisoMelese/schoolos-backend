@@ -1,5 +1,6 @@
 import type { Types } from "mongoose";
 import type { Request } from "express";
+import bcrypt from "bcryptjs";
 import User from "../models/User.model.js";
 import Session from "../models/Session.model.js";
 import type { IUserDocument } from "../models/User.model.js";
@@ -191,4 +192,71 @@ export const updateProfileService = async (
 
   await user.save();
   return user;
+};
+
+
+export const requestPasswordResetService = async (email: string): Promise<{ message: string }> => {
+  const user = await User.findOne({ email: email.toLowerCase() });
+
+  if (!user) {
+    // Don't reveal if email exists for security reasons
+    return { message: "If an account exists with this email, a password reset link will be sent." };
+  }
+
+  // Generate reset token (simple random token for now)
+  const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  
+  // Hash the token for storage
+  const hashedToken = await bcrypt.hash(resetToken, 10);
+  
+  // Set token and expiry (1 hour)
+  user.passwordResetToken = hashedToken;
+  user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
+  
+  await user.save();
+
+  // TODO: Send email with reset link
+  // For now, return the token in response (ONLY FOR DEVELOPMENT)
+  console.log(`Password reset token for ${email}: ${resetToken}`);
+
+  return { message: "If an account exists with this email, a password reset link will be sent." };
+};
+
+export const confirmPasswordResetService = async (
+  resetToken: string,
+  newPassword: string,
+): Promise<{ message: string }> => {
+  // Find user with matching reset token
+  const users = await User.find().select("+password");
+  
+  let user: IUserDocument | null = null;
+  for (const u of users) {
+    if (u.passwordResetToken && await bcrypt.compare(resetToken, u.passwordResetToken)) {
+      user = u;
+      break;
+    }
+  }
+
+  if (!user) {
+    throw new ApiError(400, "Invalid or expired reset token");
+  }
+
+  // Check if token has expired
+  if (!user.passwordResetExpires || user.passwordResetExpires < new Date()) {
+    throw new ApiError(400, "Reset token has expired");
+  }
+
+  // Update password
+  user.password = newPassword;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  user.passwordChangedAt = new Date();
+  user.tokenVersion += 1;
+
+  await user.save();
+
+  // Clear all sessions for this user
+  await Session.deleteMany({ user: user._id });
+
+  return { message: "Password reset successfully. Please login with your new password." };
 };
