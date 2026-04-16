@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import type { StringValue } from "ms";
-import { createUser, changePassword, getMyProfileService, updateProfileService, getAllUsersService, getUserByIdService } from "../services/user.service.js";
+import { createUser, changePassword, getMyProfileService, updateProfileService, getAllUsersService, getUserByIdService, requestPasswordResetService, confirmPasswordResetService } from "../services/user.service.js";
 import ApiError from "../utils/ApiError.js";
 import env from "../config/env.js";
 import ms from "ms";
@@ -140,6 +140,45 @@ export const updateProfile: RequestHandler = async (req, res, next) => {
       success: true,
       message: "Profile updated successfully",
       data:    { user },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+export const requestPasswordReset: RequestHandler = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      throw new ApiError(400, "Email is required");
+    }
+
+    const result = await requestPasswordResetService(email);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const confirmPasswordReset: RequestHandler = async (req, res, next) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      throw new ApiError(400, "Reset token and new password are required");
+    }
+
+    const result = await confirmPasswordResetService(resetToken, newPassword);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
     });
   } catch (err) {
     next(err);
