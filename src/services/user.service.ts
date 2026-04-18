@@ -251,17 +251,21 @@ export const confirmPasswordResetService = async (
   // Hash the new password manually
   const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-  // Update password with hashed value
-  user.password = hashedPassword;
-  user.passwordChangedAt = new Date();
-  user.tokenVersion += 1;
-  
-  // Clear reset token fields by setting to undefined (will be removed by save)
-  user.passwordResetToken = undefined as any;
-  user.passwordResetExpires = undefined as any;
-
-  // Save user (password is already hashed, so pre-save middleware won't hash again)
-  await user.save();
+  // Update user with hashed password using updateOne (bypasses pre-save middleware)
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $set: {
+        password: hashedPassword,
+        passwordChangedAt: new Date(),
+        tokenVersion: user.tokenVersion + 1,
+      },
+      $unset: {
+        passwordResetToken: "",
+        passwordResetExpires: "",
+      },
+    }
+  );
 
   // Clear all sessions for this user
   await Session.deleteMany({ user: user._id });
