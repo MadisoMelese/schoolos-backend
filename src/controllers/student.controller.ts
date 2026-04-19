@@ -5,6 +5,7 @@ import {
   getStudentByIdService,
   updateStudentService,
   deleteStudentService,
+  getStudentDashboardService,
 } from "../services/student.service.js";
 import ApiError from "../utils/ApiError.js";
 
@@ -129,6 +130,26 @@ export const deleteStudent = async (
       success: true,
       data: null,
       message: "Student deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getStudentDashboard = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
+    const dashboardData = await getStudentDashboardService(scope);
+    res.status(200).json({
+      success: true,
+      data: dashboardData,
+      message: "Dashboard data fetched successfully",
     });
   } catch (error) {
     next(error);
