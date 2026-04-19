@@ -144,3 +144,88 @@ export const deleteStudentService = async (
 
   return student;
 };
+
+export const getStudentDashboardService = async (
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
+  if (scope.kind !== "student") {
+    throw new ApiError(403, "Only students can access their dashboard");
+  }
+
+  const studentId = scope.studentDocId;
+
+  // Import models dynamically to avoid circular dependencies
+  const Grade = (await import("../models/Grade.model.js")).default;
+  const Attendance = (await import("../models/Attendance.model.js")).default;
+  const Exam = (await import("../models/Exam.model.js")).default;
+  const Fee = (await import("../models/Fee.model.js")).default;
+  const Message = (await import("../models/Message.model.js")).default;
+
+  // Fetch all dashboard data in parallel
+  const [grades, attendance, exams, fees, messages] = await Promise.all([
+    Grade.find({ studentId }).sort({ createdAt: -1 }).limit(5),
+    Attendance.find({ studentId }).sort({ date: -1 }).limit(10),
+    Exam.find({ studentIds: studentId, date: { $gte: new Date() } })
+      .sort({ date: 1 })
+      .limit(5),
+    Fee.find({ studentId }).sort({ createdAt: -1 }).limit(5),
+    Message.find({
+      $or: [{ recipientId: studentId }, { senderId: studentId }],
+    })
+      .sort({ timestamp: -1 })
+      .limit(5)
+      .populate("senderId", "firstName lastName")
+      .populate("recipientId", "firstName lastName"),
+  ]);
+
+  // Calculate attendance percentage
+  const totalAttendance = await Attendance.countDocuments({ studentId });
+  const presentDays = await Attendance.countDocuments({
+    studentId,
+    status: "present",
+  });
+  const attendancePercentage =
+    totalAttendance > 0 ? Math.round((presentDays / totalAttendance) * 100) : 0;
+
+  // Calculate fee summary
+  const feeSummary = await Fee.aggregate([
+    { $match: { studentId } },
+    {
+      $group: {
+        _id: null,
+        totalFees: { $sum: "$amount" },
+        totalPaid: {
+          $sum: {
+            $cond: [{ $eq: ["$status", "paid"] }, "$amount", 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const { totalFees = 0, totalPaid = 0 } = feeSummary[0] || {};
+  const outstandingBalance = totalFees - totalPaid;
+
+  // Count unread messages
+  const unreadMessageCount = await Message.countDocuments({
+    recipientId: studentId,
+    isRead: false,
+  });
+
+  return {
+    grades,
+    attendance,
+    exams,
+    fees,
+    messages,
+    attendancePercentage,
+    feeSummary: {
+      totalFees,
+      totalPaid,
+      outstandingBalance,
+    },
+    unreadMessageCount,
+  };
+};
