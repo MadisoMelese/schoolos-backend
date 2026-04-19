@@ -31,7 +31,7 @@ export const getAllTimetables = async (
     const scope = req.schoolReadScope;
     if (!scope) throw new ApiError(500, "School read scope not initialized");
 
-    const { classId, teacherId, dayOfWeek, academicYear, page, limit } = req.query;
+    const { classId, teacherId, dayOfWeek, week, academicYear, page, limit } = req.query;
 
     const filters: {
       classId?: string;
@@ -48,6 +48,14 @@ export const getAllTimetables = async (
     if (academicYear) filters.academicYear = academicYear as string;
     if (page) filters.page = Number(page);
     if (limit) filters.limit = Number(limit);
+
+    // If week parameter is provided, convert it to day of week
+    if (week && !dayOfWeek) {
+      const weekDate = new Date(week as string);
+      const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const dayName = days[weekDate.getDay()];
+      filters.dayOfWeek = dayName;
+    }
 
     const result = await getAllTimetablesService(filters, scope);
     res.status(200).json({ success: true, data: result, message: "Timetables fetched successfully" });
