@@ -101,7 +101,7 @@ export const getStudentByIdService = async (
   }
 
   const student = await Student.findById(id)
-    .populate("classId", "name section")
+    .populate("classId", "name grade section")
     .populate("userId", "email");
 
   if (!student) {
