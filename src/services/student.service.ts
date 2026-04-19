@@ -162,22 +162,28 @@ export const getStudentDashboardService = async (
   const Exam = (await import("../models/Exam.model.js")).default;
   const Fee = (await import("../models/Fee.model.js")).default;
   const Message = (await import("../models/Message.model.js")).default;
+  const User = (await import("../models/User.model.js")).default;
+
+  // Get student's user ID to fetch messages
+  const student = await Student.findById(studentId).select("userId");
+  if (!student) {
+    throw new ApiError(404, "Student not found");
+  }
 
   // Fetch all dashboard data in parallel
   const [grades, attendance, exams, fees, messages] = await Promise.all([
     Grade.find({ studentId }).sort({ createdAt: -1 }).limit(5),
     Attendance.find({ studentId }).sort({ date: -1 }).limit(10),
-    Exam.find({ studentIds: studentId, date: { $gte: new Date() } })
+    Exam.find({ classId: { $in: scope.classIds }, date: { $gte: new Date() } })
       .sort({ date: 1 })
       .limit(5),
     Fee.find({ studentId }).sort({ createdAt: -1 }).limit(5),
     Message.find({
-      $or: [{ recipientId: studentId }, { senderId: studentId }],
+      receiverId: student.userId,
     })
-      .sort({ timestamp: -1 })
+      .sort({ createdAt: -1 })
       .limit(5)
-      .populate("senderId", "firstName lastName")
-      .populate("recipientId", "firstName lastName"),
+      .populate("senderId", "firstName lastName"),
   ]);
 
   // Calculate attendance percentage
@@ -210,7 +216,7 @@ export const getStudentDashboardService = async (
 
   // Count unread messages
   const unreadMessageCount = await Message.countDocuments({
-    recipientId: studentId,
+    receiverId: student.userId,
     isRead: false,
   });
 
