@@ -5,6 +5,7 @@ import {
   getTeacherById,
   updateTeacher,
   deleteTeacher,
+  getTeacherClassStudents,
 } from "../controllers/teacher.controller.js";
 import protect from "../middlewares/auth.middleware.js";
 import loadSchoolReadScope from "../middlewares/schoolReadScope.middleware.js";
@@ -21,6 +22,7 @@ router.use(protect);
 router.use(loadSchoolReadScope);
 
 router.get("/", getAllTeachers);
+router.get("/:id/class-students", getTeacherClassStudents);
 router.get("/:id", getTeacherById);
 
 router.post("/", adminOnly, validate(createTeacherSchema), createTeacher);
