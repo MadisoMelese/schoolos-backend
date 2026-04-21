@@ -170,6 +170,11 @@ export const addStudentToClassService = async (
     throw new ApiError(404, "Class not found");
   }
 
+  // Ensure students array exists
+  if (!foundClass.students) {
+    foundClass.students = [];
+  }
+
   if (foundClass.students.length >= foundClass.capacity) {
     throw new ApiError(400, "Class is at full capacity");
   }
@@ -201,6 +206,11 @@ export const removeStudentFromClassService = async (
 
   if (!foundClass) {
     throw new ApiError(404, "Class not found");
+  }
+
+  // Ensure students array exists
+  if (!foundClass.students) {
+    foundClass.students = [];
   }
 
   const exists = foundClass.students.some((sid) => sid.toString() === studentId);
