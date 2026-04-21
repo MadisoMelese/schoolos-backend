@@ -5,6 +5,7 @@ import {
   getTeacherByIdService,
   updateTeacherService,
   deleteTeacherService,
+  getTeacherClassStudentsService,
 } from "../services/teacher.service.js";
 import ApiError from "../utils/ApiError.js";
 
@@ -125,6 +126,32 @@ export const deleteTeacher = async (
       success: true,
       data: null,
       message: "Teacher deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTeacherClassStudents = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const scope = req.schoolReadScope;
+    if (!scope) throw new ApiError(500, "School read scope not initialized");
+
+    const { id } = req.params;
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ success: false, message: "Teacher ID is required" });
+      return;
+    }
+
+    const result = await getTeacherClassStudentsService(id, scope);
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Class students fetched successfully",
     });
   } catch (error) {
     next(error);
