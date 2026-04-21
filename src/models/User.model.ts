@@ -20,7 +20,7 @@ export interface IUser {
   location?: ILocation;
   avatar?: string;
   tokenVersion: number;
-  role: "user" | "admin";
+  role: "user" | "admin" | "teacher" | "parent" | "student";
   isBlocked: boolean;
   isVerified: boolean;
   isActive: boolean;
@@ -136,7 +136,7 @@ const userSchema = new Schema<IUserDocument, UserModel, IUserMethods>(
 
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "teacher", "parent", "student"],
       default: "user",
     },
 
