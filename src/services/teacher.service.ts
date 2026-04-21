@@ -165,3 +165,50 @@ export const deleteTeacherService = async (
 
   return teacher;
 };
+
+export const getTeacherClassStudentsService = async (
+  teacherId: string,
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
+  // Only teachers can view their own class students
+  if (scope.kind === "teacher" && teacherId !== scope.teacherDocId.toString()) {
+    throw new ApiError(403, "You can only view your own class students.");
+  }
+
+  // Get the teacher
+  const teacher = await Teacher.findById(teacherId);
+  if (!teacher) {
+    throw new ApiError(404, "Teacher not found");
+  }
+
+  // Find the class assigned to this teacher
+  const classDoc = await Class.findOne({ teacherId: new mongoose.Types.ObjectId(teacherId) })
+    .populate({
+      path: "students",
+      model: "Student",
+      select: "studentId firstName lastName email gender status",
+    });
+
+  if (!classDoc) {
+    return {
+      class: null,
+      students: [],
+      message: "No class assigned to this teacher",
+    };
+  }
+
+  return {
+    class: {
+      _id: classDoc._id,
+      name: classDoc.name,
+      section: classDoc.section,
+      grade: classDoc.grade,
+      capacity: classDoc.capacity,
+      academicYear: classDoc.academicYear,
+      status: classDoc.status,
+    },
+    students: classDoc.students || [],
+  };
+};
