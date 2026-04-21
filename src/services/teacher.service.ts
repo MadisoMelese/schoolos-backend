@@ -172,13 +172,18 @@ export const getTeacherClassStudentsService = async (
 ) => {
   assertSchoolDataAccess(scope);
 
-  // Only teachers can view their own class students
-  if (scope.kind === "teacher" && teacherId !== scope.teacherDocId.toString()) {
-    throw new ApiError(403, "You can only view your own class students.");
-  }
+  // Determine the actual teacher ID
+  let actualTeacherId: mongoose.Types.ObjectId;
 
-  // Use the teacher ID from scope if it's a teacher
-  const actualTeacherId = scope.kind === "teacher" ? scope.teacherDocId : new mongoose.Types.ObjectId(teacherId);
+  if (scope.kind === "teacher") {
+    // For teachers, always use their own teacher document ID from scope
+    actualTeacherId = scope.teacherDocId;
+  } else if (scope.kind === "admin") {
+    // Admins can view any teacher's class students
+    actualTeacherId = new mongoose.Types.ObjectId(teacherId);
+  } else {
+    throw new ApiError(403, "You do not have access to view class students.");
+  }
 
   // Find the class assigned to this teacher
   const classDoc = await Class.findOne({ teacherId: actualTeacherId })
