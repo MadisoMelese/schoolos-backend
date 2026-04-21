@@ -7,6 +7,7 @@ import {
   markAsReadService,
   deleteMessageService,
   getUnreadCountService,
+  getAllMessagesService,
 } from "../services/message.service.js";
 import ApiError from "../utils/ApiError.js";
 
@@ -152,6 +153,33 @@ export const getUnreadCount = async (
     if (!req.user) throw new ApiError(401, "Unauthorized");
     const result = await getUnreadCountService(req.user._id.toString());
     res.status(200).json({ success: true, data: result, message: "Unread count fetched successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllMessages = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { search, isRead, page, limit } = req.query;
+
+    const filters: {
+      search?: string;
+      isRead?: boolean;
+      page?: number;
+      limit?: number;
+    } = {};
+
+    if (search) filters.search = search as string;
+    if (isRead !== undefined) filters.isRead = isRead === "true";
+    if (page) filters.page = Number(page);
+    if (limit) filters.limit = Number(limit);
+
+    const result = await getAllMessagesService(filters);
+    res.status(200).json({ success: true, data: result, message: "All messages fetched successfully" });
   } catch (error) {
     next(error);
   }
