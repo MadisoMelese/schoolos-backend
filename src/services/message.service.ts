@@ -57,7 +57,7 @@ export const getInboxService = async (
 
   const [messages, total] = await Promise.all([
     Message.find(query)
-      .populate("senderId", "firstname lastname")
+      .populate("senderId", "firstname lastname email")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 }),
@@ -87,7 +87,7 @@ export const getSentService = async (
 
   const [messages, total] = await Promise.all([
     Message.find(query)
-      .populate("receiverId", "firstname lastname")
+      .populate("receiverId", "firstname lastname email")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 }),
@@ -103,8 +103,14 @@ export const getSentService = async (
 };
 
 const participantIdString = (ref: unknown): string => {
-  if (ref && typeof ref === "object" && "_id" in ref) {
-    return String((ref as { _id: { toString: () => string } })._id);
+  if (ref && typeof ref === "object") {
+    // Check for 'id' first (from toJSON transform), then '_id'
+    if ("id" in ref) {
+      return String((ref as { id: string }).id);
+    }
+    if ("_id" in ref) {
+      return String((ref as { _id: { toString: () => string } })._id);
+    }
   }
   return String(ref);
 };
