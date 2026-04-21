@@ -7,8 +7,10 @@ import {
   markAsRead,
   deleteMessage,
   getUnreadCount,
+  getAllMessages,
 } from "../controllers/message.controller.js";
 import protect from "../middlewares/auth.middleware.js";
+import adminOnly from "../middlewares/adminOnly.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
 import { createMessageSchema } from "../validators/message.validator.js";
 
@@ -19,6 +21,7 @@ router.use(protect);
 router.get("/inbox", getInbox);
 router.get("/sent", getSent);
 router.get("/unread-count", getUnreadCount);
+router.get("/admin/all", adminOnly, getAllMessages);
 router.get("/:id", getMessageById);
 
 router.post("/", validate(createMessageSchema), createMessage);
