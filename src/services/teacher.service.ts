@@ -177,14 +177,11 @@ export const getTeacherClassStudentsService = async (
     throw new ApiError(403, "You can only view your own class students.");
   }
 
-  // Get the teacher
-  const teacher = await Teacher.findById(teacherId);
-  if (!teacher) {
-    throw new ApiError(404, "Teacher not found");
-  }
+  // Use the teacher ID from scope if it's a teacher
+  const actualTeacherId = scope.kind === "teacher" ? scope.teacherDocId : new mongoose.Types.ObjectId(teacherId);
 
   // Find the class assigned to this teacher
-  const classDoc = await Class.findOne({ teacherId: new mongoose.Types.ObjectId(teacherId) })
+  const classDoc = await Class.findOne({ teacherId: actualTeacherId })
     .populate({
       path: "students",
       model: "Student",
