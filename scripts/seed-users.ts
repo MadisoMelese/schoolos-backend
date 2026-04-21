@@ -11,7 +11,16 @@ dotenv.config();
  */
 
 const testUsers = [
-
+  {
+    firstname: "Admin",
+    lastname: "User",
+    username: "admin.user",
+    email: "admin@example.com",
+    password: "Admin123!",
+    role: "admin",
+    isVerified: true,
+    isActive: true,
+  },
   {
     firstname: "John",
     lastname: "Student",
@@ -27,6 +36,36 @@ const testUsers = [
     lastname: "Teacher",
     username: "jane.teacher",
     email: "teacher@example.com",
+    password: "Teacher123!",
+    role: "user",
+    isVerified: true,
+    isActive: true,
+  },
+  {
+    firstname: "Michael",
+    lastname: "Parent",
+    username: "michael.parent",
+    email: "parent@example.com",
+    password: "Parent123!",
+    role: "user",
+    isVerified: true,
+    isActive: true,
+  },
+  {
+    firstname: "Sarah",
+    lastname: "Student2",
+    username: "sarah.student2",
+    email: "student2@example.com",
+    password: "Student123!",
+    role: "user",
+    isVerified: true,
+    isActive: true,
+  },
+  {
+    firstname: "David",
+    lastname: "Teacher2",
+    username: "david.teacher2",
+    email: "teacher2@example.com",
     password: "Teacher123!",
     role: "user",
     isVerified: true,
