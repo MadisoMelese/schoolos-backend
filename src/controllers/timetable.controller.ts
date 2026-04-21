@@ -54,7 +54,9 @@ export const getAllTimetables = async (
       const weekDate = new Date(week as string);
       const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
       const dayName = days[weekDate.getDay()];
-      filters.dayOfWeek = dayName;
+      if (dayName) {
+        filters.dayOfWeek = dayName;
+      }
     }
 
     const result = await getAllTimetablesService(filters, scope);
