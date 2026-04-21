@@ -11,6 +11,16 @@ export interface CreateMessageInput {
 }
 
 export const createMessageService = async (data: CreateMessageInput) => {
+  // Validate receiverId is a valid MongoDB ObjectId
+  if (!data.receiverId || typeof data.receiverId !== 'string' || data.receiverId.trim() === '') {
+    throw new ApiError(400, "Invalid receiver ID provided.");
+  }
+
+  // Check if receiverId looks like a valid ObjectId (24 hex characters)
+  if (!/^[0-9a-fA-F]{24}$/.test(data.receiverId)) {
+    throw new ApiError(400, `Invalid receiver ID format. Received: "${data.receiverId}". Expected a valid MongoDB ObjectId.`);
+  }
+
   if (data.receiverId === data.senderId.toString()) {
     throw new ApiError(400, "Cannot send a message to yourself.");
   }
