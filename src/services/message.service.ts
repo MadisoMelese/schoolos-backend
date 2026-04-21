@@ -101,8 +101,8 @@ const participantIdString = (ref: unknown): string => {
 
 export const getMessageByIdService = async (id: string, userId: string) => {
   const message = await Message.findById(id)
-    .populate("senderId", "firstname lastname")
-    .populate("receiverId", "firstname lastname");
+    .populate("senderId", "firstname lastname email")
+    .populate("receiverId", "firstname lastname email");
 
   if (!message) {
     throw new ApiError(404, "Message not found");
@@ -164,4 +164,47 @@ export const getUnreadCountService = async (userId: string) => {
   });
 
   return { unreadCount: count };
+};
+
+
+export const getAllMessagesService = async (
+  filters: {
+    search?: string;
+    isRead?: boolean;
+    page?: number;
+    limit?: number;
+  },
+) => {
+  const { search, isRead, page = 1, limit = 20 } = filters;
+
+  const query: Record<string, unknown> = {};
+
+  if (search) {
+    query.$or = [
+      { subject: { $regex: search, $options: "i" } },
+      { "senderId.firstname": { $regex: search, $options: "i" } },
+      { "senderId.lastname": { $regex: search, $options: "i" } },
+    ];
+  }
+
+  if (isRead !== undefined) query.isRead = isRead;
+
+  const skip = (page - 1) * limit;
+
+  const [messages, total] = await Promise.all([
+    Message.find(query)
+      .populate("senderId", "firstname lastname email")
+      .populate("receiverId", "firstname lastname email")
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }),
+    Message.countDocuments(query),
+  ]);
+
+  return {
+    messages,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
 };
