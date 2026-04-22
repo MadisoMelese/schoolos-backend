@@ -189,8 +189,13 @@ export const addStudentToClassService = async (
     throw new ApiError(400, "Student is already enrolled in this class");
   }
 
+  // Add student to class
   foundClass.students.push(studentObjectId);
   await foundClass.save();
+
+  // Update student's classId field for bidirectional consistency
+  const Student = mongoose.model("Student");
+  await Student.findByIdAndUpdate(studentId, { classId: foundClass._id });
 
   return foundClass;
 };
@@ -219,11 +224,16 @@ export const removeStudentFromClassService = async (
     throw new ApiError(400, "Student is not enrolled in this class");
   }
 
+  // Remove student from class
   foundClass.students = foundClass.students.filter(
     (sid) => sid.toString() !== studentId,
   );
 
   await foundClass.save();
+
+  // Clear student's classId field for bidirectional consistency
+  const Student = mongoose.model("Student");
+  await Student.findByIdAndUpdate(studentId, { classId: null });
 
   return foundClass;
 };
