@@ -22,6 +22,8 @@ export interface IUser {
   tokenVersion: number;
   role: "user" | "admin" | "teacher" | "parent" | "student";
   isBlocked: boolean;
+  blockedReason?: string;
+  blockedAt?: Date;
   isVerified: boolean;
   isActive: boolean;
   passwordChangedAt?: Date;
@@ -147,6 +149,14 @@ const userSchema = new Schema<IUserDocument, UserModel, IUserMethods>(
     isBlocked: {
       type: Boolean,
       default: false,
+    },
+
+    blockedReason: {
+      type: String,
+    },
+
+    blockedAt: {
+      type: Date,
     },
 
     isVerified: {
