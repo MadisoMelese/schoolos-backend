@@ -69,7 +69,7 @@ export const updateAnnouncementService = async (
   assertSchoolMutationAllowed(actor);
 
   const announcement = await Announcement.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

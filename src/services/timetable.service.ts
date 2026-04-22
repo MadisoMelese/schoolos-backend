@@ -138,7 +138,7 @@ export const updateTimetableService = async (
   assertSchoolMutationAllowed(actor);
 
   const timetable = await Timetable.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

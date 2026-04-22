@@ -131,7 +131,7 @@ export const updateClassService = async (
   assertSchoolMutationAllowed(actor);
 
   const foundClass = await Class.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

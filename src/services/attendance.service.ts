@@ -209,7 +209,7 @@ export const updateAttendanceService = async (
   assertSchoolMutationAllowed(actor);
 
   const attendance = await Attendance.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

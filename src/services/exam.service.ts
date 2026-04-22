@@ -126,7 +126,7 @@ export const updateExamService = async (
   assertSchoolMutationAllowed(actor);
 
   const exam = await Exam.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

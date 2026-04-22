@@ -211,7 +211,7 @@ export const updateGradeService = async (
   assertSchoolMutationAllowed(actor);
 
   const grade = await Grade.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

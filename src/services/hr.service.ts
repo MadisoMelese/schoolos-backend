@@ -83,7 +83,7 @@ export const updateStaffService = async (
   assertSchoolMutationAllowed(actor);
 
   const staff = await Staff.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

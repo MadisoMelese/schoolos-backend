@@ -75,7 +75,7 @@ export const updateBookService = async (
   assertSchoolMutationAllowed(actor);
 
   const book = await Book.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

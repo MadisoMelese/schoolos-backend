@@ -120,7 +120,7 @@ export const updateFeeService = async (
   assertSchoolMutationAllowed(actor);
 
   const fee = await Fee.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 

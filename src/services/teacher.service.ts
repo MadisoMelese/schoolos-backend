@@ -140,7 +140,7 @@ export const updateTeacherService = async (
   assertSchoolMutationAllowed(actor);
 
   const teacher = await Teacher.findByIdAndUpdate(id, data, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 
