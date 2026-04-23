@@ -24,6 +24,23 @@ export const createStudentService = async (
   }
 
   const student = await Student.create(data);
+
+  // If student has a classId, add student to Class.students array
+  if (data.classId) {
+    const Class = (await import("../models/Class.model.js")).default;
+    const classDoc = await Class.findById(data.classId);
+    if (classDoc) {
+      if (!classDoc.students) {
+        classDoc.students = [];
+      }
+      // Check if student is not already in the array
+      if (!classDoc.students.some(s => s.toString() === student._id.toString())) {
+        classDoc.students.push(student._id);
+        await classDoc.save();
+      }
+    }
+  }
+
   return student;
 };
 
@@ -118,6 +135,15 @@ export const updateStudentService = async (
 ) => {
   assertSchoolMutationAllowed(actor);
 
+  // Get the current student to check for classId changes
+  const currentStudent = await Student.findById(id);
+  if (!currentStudent) {
+    throw new ApiError(404, "Student not found");
+  }
+
+  const oldClassId = currentStudent.classId?.toString();
+  const newClassId = data.classId?.toString();
+
   const student = await Student.findByIdAndUpdate(id, data, {
     returnDocument: 'after',
     runValidators: true,
@@ -125,6 +151,37 @@ export const updateStudentService = async (
 
   if (!student) {
     throw new ApiError(404, "Student not found");
+  }
+
+  // Handle class assignment changes
+  const Class = (await import("../models/Class.model.js")).default;
+
+  // If classId changed, update both old and new class's students arrays
+  if (oldClassId !== newClassId) {
+    // Remove from old class
+    if (oldClassId) {
+      const oldClass = await Class.findById(oldClassId);
+      if (oldClass && oldClass.students) {
+        oldClass.students = oldClass.students.filter(
+          s => s.toString() !== id
+        );
+        await oldClass.save();
+      }
+    }
+
+    // Add to new class
+    if (newClassId) {
+      const newClass = await Class.findById(newClassId);
+      if (newClass) {
+        if (!newClass.students) {
+          newClass.students = [];
+        }
+        if (!newClass.students.some(s => s.toString() === id)) {
+          newClass.students.push(student._id);
+          await newClass.save();
+        }
+      }
+    }
   }
 
   return student;
@@ -136,11 +193,27 @@ export const deleteStudentService = async (
 ) => {
   assertSchoolMutationAllowed(actor);
 
-  const student = await Student.findByIdAndDelete(id);
+  // Get student before deletion to get classId
+  const student = await Student.findById(id);
 
   if (!student) {
     throw new ApiError(404, "Student not found");
   }
+
+  // Remove student from class if assigned
+  if (student.classId) {
+    const Class = (await import("../models/Class.model.js")).default;
+    const classDoc = await Class.findById(student.classId);
+    if (classDoc && classDoc.students) {
+      classDoc.students = classDoc.students.filter(
+        s => s.toString() !== id
+      );
+      await classDoc.save();
+    }
+  }
+
+  // Delete the student
+  await Student.findByIdAndDelete(id);
 
   return student;
 };
