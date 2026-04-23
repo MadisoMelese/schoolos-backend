@@ -6,6 +6,7 @@ import {
   updateStudentService,
   deleteStudentService,
   getStudentDashboardService,
+  syncClassStudentsService,
 } from "../services/student.service.js";
 import ApiError from "../utils/ApiError.js";
 
@@ -150,6 +151,23 @@ export const getStudentDashboard = async (
       success: true,
       data: dashboardData,
       message: "Dashboard data fetched successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const syncClassStudents = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await syncClassStudentsService();
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Class students synced successfully",
     });
   } catch (error) {
     next(error);

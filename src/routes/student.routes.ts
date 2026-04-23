@@ -6,6 +6,7 @@ import {
   updateStudent,
   deleteStudent,
   getStudentDashboard,
+  syncClassStudents,
 } from "../controllers/student.controller.js";
 import protect from "../middlewares/auth.middleware.js";
 import loadSchoolReadScope from "../middlewares/schoolReadScope.middleware.js";
@@ -22,6 +23,7 @@ router.use(protect);
 router.use(loadSchoolReadScope);
 
 router.get("/dashboard", getStudentDashboard);
+router.get("/sync-class-students", adminOnly, syncClassStudents);
 router.get("/", getAllStudents);
 router.get("/:id", getStudentById);
 

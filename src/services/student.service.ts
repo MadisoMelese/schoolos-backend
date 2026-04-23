@@ -218,6 +218,45 @@ export const deleteStudentService = async (
   return student;
 };
 
+// Utility function to sync all Class.students arrays based on Student.classId
+export const syncClassStudentsService = async () => {
+  const Class = (await import("../models/Class.model.js")).default;
+  const mongoose = (await import("mongoose")).default;
+  
+  // Get all students with classId
+  const students = await Student.find({ classId: { $ne: null, $exists: true } });
+  
+  // Group students by classId
+  const classStudentsMap = new Map<string, string[]>();
+  
+  for (const student of students) {
+    if (student.classId) {
+      const classIdStr = student.classId.toString();
+      if (!classStudentsMap.has(classIdStr)) {
+        classStudentsMap.set(classIdStr, []);
+      }
+      classStudentsMap.get(classIdStr)!.push(student._id.toString());
+    }
+  }
+  
+  // Update each class's students array
+  let updatedCount = 0;
+  for (const [classId, studentIds] of classStudentsMap) {
+    const classDoc = await Class.findById(classId);
+    if (classDoc) {
+      const studentObjectIds = studentIds.map(id => new mongoose.Types.ObjectId(id));
+      classDoc.students = studentObjectIds;
+      await classDoc.save();
+      updatedCount++;
+    }
+  }
+  
+  return {
+    totalStudents: students.length,
+    updatedClasses: updatedCount,
+  };
+};
+
 export const getStudentDashboardService = async (
   scope: SchoolReadScope,
 ) => {
