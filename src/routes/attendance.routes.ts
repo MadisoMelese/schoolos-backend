@@ -11,6 +11,7 @@ import {
 import protect from "../middlewares/auth.middleware.js";
 import loadSchoolReadScope from "../middlewares/schoolReadScope.middleware.js";
 import adminOnly from "../middlewares/adminOnly.middleware.js";
+import adminOrTeacher from "../middlewares/adminOrTeacher.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
 import {
   createAttendanceSchema,
@@ -27,9 +28,9 @@ router.get("/", getAllAttendance);
 router.get("/summary/:studentId", getStudentAttendanceSummary);
 router.get("/:id", getAttendanceById);
 
-router.post("/", adminOnly, validate(createAttendanceSchema), createAttendance);
-router.post("/bulk", adminOnly, validate(bulkAttendanceSchema), bulkCreateAttendance);
-router.put("/:id", adminOnly, validate(updateAttendanceSchema), updateAttendance);
+router.post("/", adminOrTeacher, validate(createAttendanceSchema), createAttendance);
+router.post("/bulk", adminOrTeacher, validate(bulkAttendanceSchema), bulkCreateAttendance);
+router.put("/:id", adminOrTeacher, validate(updateAttendanceSchema), updateAttendance);
 router.delete("/:id", adminOnly, deleteAttendance);
 
 export default router;
