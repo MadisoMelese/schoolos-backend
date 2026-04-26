@@ -17,14 +17,17 @@ export const idInObjectIdList = (
   list: Types.ObjectId[],
 ): boolean => list.some((x) => x.toString() === id);
 
-/** Defense in depth: school record mutations must be performed by an admin. */
+/** 
+ * Defense in depth: school record mutations must be performed by an admin or teacher.
+ * Teachers can perform certain mutations like marking attendance for their students.
+ */
 export const assertSchoolMutationAllowed = (
   actor: IUserDocument | undefined,
 ): void => {
   if (!actor) {
     throw new ApiError(401, "Unauthorized");
   }
-  if (actor.role !== "admin") {
-    throw new ApiError(403, "Only administrators can modify school records.");
+  if (actor.role !== "admin" && actor.role !== "teacher") {
+    throw new ApiError(403, "Only administrators or teachers can modify school records.");
   }
 };
