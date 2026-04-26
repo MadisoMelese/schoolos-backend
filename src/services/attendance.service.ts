@@ -45,9 +45,21 @@ export const bulkCreateAttendanceService = async (
 
   const { classId, teacherId, date, records } = data;
 
+  // Resolve teacherId - if 'me' is passed, get from actor's scope
+  let resolvedTeacherId = teacherId;
+  if (teacherId === 'me' && actor.role === 'teacher') {
+    // Get the teacher document for this user
+    const Teacher = (await import('../models/Teacher.model.js')).default;
+    const teacherDoc = await Teacher.findOne({ userId: actor._id });
+    if (!teacherDoc) {
+      throw new ApiError(400, 'Teacher profile not found for this user');
+    }
+    resolvedTeacherId = teacherDoc._id.toString();
+  }
+
   const attendanceDocs = records.map((record) => ({
     classId,
-    teacherId,
+    teacherId: resolvedTeacherId,
     date: new Date(date),
     studentId: record.studentId,
     status: record.status,
