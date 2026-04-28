@@ -142,13 +142,14 @@ export const getTeacherClassStudents = async (
     const scope = req.schoolReadScope;
     if (!scope) throw new ApiError(500, "School read scope not initialized");
 
+    // Get id from params - could be "me" or an actual teacher ID
     const { id } = req.params;
-    if (!id || Array.isArray(id)) {
-      res.status(400).json({ success: false, message: "Teacher ID is required" });
-      return;
-    }
+    
+    // If no id param (route is /me/class-students), use "me"
+    // If id is provided, use it (could be "me" or actual ID)
+    const teacherId = id || "me";
 
-    const result = await getTeacherClassStudentsService(id, scope);
+    const result = await getTeacherClassStudentsService(teacherId, scope);
     res.status(200).json({
       success: true,
       data: result,

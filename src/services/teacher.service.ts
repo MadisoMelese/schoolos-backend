@@ -184,6 +184,14 @@ export const getTeacherClassStudentsService = async (
     actualTeacherId = scope.teacherDocId;
   } else if (scope.kind === "admin") {
     // Admins can view any teacher's class students
+    // But if "me" is passed, they don't have a teacher profile, so return empty
+    if (teacherId === "me") {
+      return {
+        class: null,
+        students: [],
+        message: "Admins don't have assigned classes. Use a specific teacher ID.",
+      };
+    }
     actualTeacherId = new mongoose.Types.ObjectId(teacherId);
   } else {
     throw new ApiError(403, "You do not have access to view class students.");
