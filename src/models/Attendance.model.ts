@@ -45,6 +45,10 @@ const AttendanceSchema = new Schema<IAttendance>(
   { timestamps: true }
 );
 
+// Indexes for attendance queries
 AttendanceSchema.index({ studentId: 1, classId: 1, date: 1 }, { unique: true });
+AttendanceSchema.index({ teacherId: 1, date: -1 });
+AttendanceSchema.index({ classId: 1, date: -1 });
+AttendanceSchema.index({ studentId: 1, date: -1 });
 
 export default mongoose.model<IAttendance>("Attendance", AttendanceSchema);

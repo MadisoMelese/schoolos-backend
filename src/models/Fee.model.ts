@@ -67,4 +67,9 @@ const FeeSchema = new Schema<IFee>(
   { timestamps: true }
 );
 
+// Indexes for fee queries
+FeeSchema.index({ studentId: 1, academicYear: 1 });
+FeeSchema.index({ status: 1, dueDate: 1 });
+FeeSchema.index({ academicYear: 1, term: 1 });
+
 export default mongoose.model<IFee>("Fee", FeeSchema);

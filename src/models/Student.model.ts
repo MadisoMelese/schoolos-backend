@@ -93,4 +93,9 @@ const StudentSchema = new Schema<IStudent>(
   { timestamps: true }
 );
 
+// Indexes for student queries
+StudentSchema.index({ classId: 1, status: 1 });
+StudentSchema.index({ status: 1 });
+StudentSchema.index({ studentId: 1 });
+
 export default mongoose.model<IStudent>("Student", StudentSchema);

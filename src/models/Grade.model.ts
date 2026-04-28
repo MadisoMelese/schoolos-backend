@@ -69,7 +69,11 @@ const GradeSchema = new Schema<IGrade>(
   { timestamps: true }
 );
 
+// Indexes for grade queries
 GradeSchema.index({ studentId: 1, examId: 1 }, { unique: true });
+GradeSchema.index({ classId: 1, academicYear: 1 });
+GradeSchema.index({ teacherId: 1, academicYear: 1 });
+GradeSchema.index({ studentId: 1, academicYear: 1 });
 
 const calculateGrade = (marksObtained: number, totalMarks: number): string => {
   const percentage = (marksObtained / totalMarks) * 100;

@@ -44,4 +44,9 @@ const MessageSchema = new Schema<IMessage>(
   { timestamps: true }
 );
 
+// Indexes for message queries (inbox, sent, unread)
+MessageSchema.index({ receiverId: 1, isRead: 1, createdAt: -1 });
+MessageSchema.index({ senderId: 1, createdAt: -1 });
+MessageSchema.index({ receiverId: 1, createdAt: -1 });
+
 export default mongoose.model<IMessage>("Message", MessageSchema);
