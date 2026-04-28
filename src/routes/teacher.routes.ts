@@ -6,6 +6,7 @@ import {
   updateTeacher,
   deleteTeacher,
   getTeacherClassStudents,
+  getTeacherDashboard,
 } from "../controllers/teacher.controller.js";
 import protect from "../middlewares/auth.middleware.js";
 import loadSchoolReadScope from "../middlewares/schoolReadScope.middleware.js";
@@ -22,6 +23,8 @@ router.use(protect);
 router.use(loadSchoolReadScope);
 
 router.get("/", getAllTeachers);
+router.get("/me/dashboard", getTeacherDashboard);
+router.get("/me/class-students", getTeacherClassStudents);
 router.get("/:id/class-students", getTeacherClassStudents);
 router.get("/:id", getTeacherById);
 

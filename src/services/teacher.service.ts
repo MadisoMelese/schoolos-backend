@@ -11,6 +11,10 @@ import {
   assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
+import { cache, CacheKeys } from "../utils/cache.js";
+
+// Cache TTL: 2 minutes for dashboard data
+const DASHBOARD_CACHE_TTL = 2 * 60 * 1000;
 
 const visibleTeacherIdsForStudent = async (
   studentDocId: Types.ObjectId,
@@ -213,4 +217,135 @@ export const getTeacherClassStudentsService = async (
     },
     students: classDoc.students || [],
   };
+};
+
+
+/**
+ * Get teacher dashboard data with optimized queries
+ * Uses aggregation and caching for better performance
+ */
+export const getTeacherDashboardService = async (
+  scope: SchoolReadScope,
+) => {
+  assertSchoolDataAccess(scope);
+
+  if (scope.kind !== "teacher") {
+    throw new ApiError(403, "Only teachers can access their dashboard");
+  }
+
+  const teacherId = scope.teacherDocId;
+  const cacheKey = CacheKeys.dashboard("teacher", teacherId.toString());
+
+  // Try cache first
+  const cached = cache.get<any>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Import models dynamically
+  const Grade = (await import("../models/Grade.model.js")).default;
+  const Attendance = (await import("../models/Attendance.model.js")).default;
+  const Message = (await import("../models/Message.model.js")).default;
+  const User = (await import("../models/User.model.js")).default;
+
+  // Get teacher's user ID for messages
+  const teacher = await Teacher.findById(teacherId).select("userId").lean();
+  if (!teacher) {
+    throw new ApiError(404, "Teacher not found");
+  }
+
+  // Run all queries in parallel using Promise.all
+  const [
+    classes,
+    recentGrades,
+    attendanceStats,
+    pendingGradesCount,
+    unreadMessagesCount,
+    recentMessages,
+  ] = await Promise.all([
+    // Get assigned classes with student count
+    Class.find({ teacherId })
+      .select("name section grade capacity academicYear status students")
+      .lean(),
+
+    // Get recent grades (last 10)
+    Grade.find({ teacherId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate("studentId", "firstName lastName studentId")
+      .populate("classId", "name section")
+      .lean(),
+
+    // Get attendance stats for today using aggregation
+    Attendance.aggregate([
+      {
+        $match: {
+          teacherId,
+          date: {
+            $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            $lt: new Date(new Date().setHours(23, 59, 59, 999)),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          present: {
+            $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] },
+          },
+          absent: {
+            $sum: { $cond: [{ $eq: ["$status", "absent"] }, 1, 0] },
+          },
+          late: {
+            $sum: { $cond: [{ $eq: ["$status", "late"] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+
+    // Count pending grades (students without grades for recent exams)
+    Grade.countDocuments({ teacherId, marksObtained: { $exists: false } }),
+
+    // Count unread messages
+    Message.countDocuments({ receiverId: teacher.userId, isRead: false }),
+
+    // Get recent messages
+    Message.find({ receiverId: teacher.userId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("senderId", "firstName lastName")
+      .lean(),
+  ]);
+
+  // Process classes data
+  const processedClasses = classes.map((c) => ({
+    _id: c._id,
+    name: c.name,
+    section: c.section,
+    grade: c.grade,
+    capacity: c.capacity,
+    academicYear: c.academicYear,
+    status: c.status,
+    studentCount: c.students?.length || 0,
+  }));
+
+  // Calculate total students across all classes
+  const totalStudents = scope.rosterStudentIds.length;
+
+  const result = {
+    classes: processedClasses,
+    totalClasses: classes.length,
+    totalStudents,
+    recentGrades,
+    attendanceStats: attendanceStats[0] || { total: 0, present: 0, absent: 0, late: 0 },
+    pendingGradesCount,
+    unreadMessagesCount,
+    recentMessages,
+  };
+
+  // Cache the result
+  cache.set(cacheKey, result, DASHBOARD_CACHE_TTL);
+
+  return result;
 };
