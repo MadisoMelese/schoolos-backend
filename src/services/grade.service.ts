@@ -8,6 +8,13 @@ import {
   assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
+import {
+  validatePagination,
+  sanitizeSearchQuery,
+  buildPaginationMeta,
+  parseFields,
+} from "../utils/pagination.js";
+import { canAccessGrade, assertPermission } from "../utils/permissions.js";
 
 export const createGradeService = async (
   data: Partial<IGrade>,
@@ -97,6 +104,8 @@ export const getAllGradesService = async (
     academicYear?: string;
     page?: number;
     limit?: number;
+    fields?: string;
+    cursor?: string;
   },
   scope: SchoolReadScope,
 ) => {
@@ -109,14 +118,22 @@ export const getAllGradesService = async (
     teacherId,
     subject,
     academicYear,
-    page = 1,
-    limit = 20,
+    page,
+    limit,
+    fields,
+    cursor,
   } = filters;
+
+  // Validate and normalize pagination
+  const { validatedPage, validatedLimit, skip } = validatePagination(page, limit, cursor);
+  
+  // Sanitize subject search
+  const sanitizedSubject = sanitizeSearchQuery(subject);
 
   const base: Record<string, unknown> = {};
 
   if (examId) base.examId = examId;
-  if (subject) base.subject = { $regex: subject, $options: "i" };
+  if (sanitizedSubject) base.subject = { $regex: sanitizedSubject, $options: "i" };
   if (academicYear) base.academicYear = academicYear;
 
   let query: Record<string, unknown>;
@@ -149,7 +166,8 @@ export const getAllGradesService = async (
     query = base;
   }
 
-  const skip = (page - 1) * limit;
+  // Parse field selection
+  const projection = parseFields(fields);
 
   const [grades, total] = await Promise.all([
     Grade.find(query)
@@ -158,16 +176,15 @@ export const getAllGradesService = async (
       .populate("classId", "name section grade")
       .populate("teacherId", "firstName lastName teacherId")
       .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 }),
+      .limit(validatedLimit)
+      .sort({ createdAt: -1 })
+      .select(projection || {}),
     Grade.countDocuments(query),
   ]);
 
   return {
     grades,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
+    ...buildPaginationMeta(total, validatedPage, validatedLimit),
   };
 };
 

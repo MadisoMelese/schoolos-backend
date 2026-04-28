@@ -8,6 +8,12 @@ import {
   assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
+import {
+  validatePagination,
+  buildPaginationMeta,
+  parseFields,
+} from "../utils/pagination.js";
+import { canAccessAttendance, assertPermission } from "../utils/permissions.js";
 
 export const createAttendanceService = async (
   data: Partial<IAttendance>,
@@ -102,6 +108,8 @@ export const getAllAttendanceService = async (
     date?: string;
     page?: number;
     limit?: number;
+    fields?: string;
+    cursor?: string;
   },
   scope: SchoolReadScope,
 ) => {
@@ -113,9 +121,14 @@ export const getAllAttendanceService = async (
     teacherId,
     status,
     date,
-    page = 1,
-    limit = 20,
+    page,
+    limit,
+    fields,
+    cursor,
   } = filters;
+
+  // Validate and normalize pagination
+  const { validatedPage, validatedLimit, skip } = validatePagination(page, limit, cursor);
 
   const base: Record<string, unknown> = {};
   if (status) base.status = status;
@@ -157,7 +170,8 @@ export const getAllAttendanceService = async (
     query = base;
   }
 
-  const skip = (page - 1) * limit;
+  // Parse field selection
+  const projection = parseFields(fields);
 
   const [attendance, total] = await Promise.all([
     Attendance.find(query)
@@ -165,16 +179,15 @@ export const getAllAttendanceService = async (
       .populate("classId", "name section grade")
       .populate("teacherId", "firstName lastName teacherId")
       .skip(skip)
-      .limit(limit)
-      .sort({ date: -1 }),
+      .limit(validatedLimit)
+      .sort({ date: -1 })
+      .select(projection || {}),
     Attendance.countDocuments(query),
   ]);
 
   return {
     attendance,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
+    ...buildPaginationMeta(total, validatedPage, validatedLimit),
   };
 };
 

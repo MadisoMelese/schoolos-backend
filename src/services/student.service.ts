@@ -8,6 +8,13 @@ import {
   assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
+import {
+  validatePagination,
+  sanitizeSearchQuery,
+  buildPaginationMeta,
+  parseFields,
+} from "../utils/pagination.js";
+import { canAccessStudent, canMutate, assertPermission } from "../utils/permissions.js";
 
 export const createStudentService = async (
   data: Partial<IStudent>,
@@ -51,25 +58,34 @@ export const getAllStudentsService = async (
     search?: string;
     page?: number;
     limit?: number;
+    fields?: string;
+    cursor?: string;
   },
   scope: SchoolReadScope,
 ) => {
   assertSchoolDataAccess(scope);
 
-  const { status, classId, search, page = 1, limit = 20 } = filters;
+  const { status, classId, search, page, limit, fields, cursor } = filters;
+  
+  // Validate and normalize pagination
+  const { validatedPage, validatedLimit, skip } = validatePagination(page, limit, cursor);
+  
+  // Sanitize search query to prevent ReDoS
+  const sanitizedSearch = sanitizeSearchQuery(search);
 
   const query: Record<string, unknown> = {};
 
   if (status) query.status = status;
   if (classId) query.classId = classId;
-  if (search) {
+  if (sanitizedSearch) {
     query.$or = [
-      { firstName: { $regex: search, $options: "i" } },
-      { lastName: { $regex: search, $options: "i" } },
-      { studentId: { $regex: search, $options: "i" } },
+      { firstName: { $regex: sanitizedSearch, $options: "i" } },
+      { lastName: { $regex: sanitizedSearch, $options: "i" } },
+      { studentId: { $regex: sanitizedSearch, $options: "i" } },
     ];
   }
 
+  // Apply scope-based filtering
   if (scope.kind === "student") {
     query._id = scope.studentDocId;
   } else if (scope.kind === "teacher") {
@@ -80,23 +96,23 @@ export const getAllStudentsService = async (
     }
   }
 
-  const skip = (page - 1) * limit;
+  // Parse field selection
+  const projection = parseFields(fields);
 
   const [students, total] = await Promise.all([
     Student.find(query)
       .populate("classId", "name section grade")
       .populate("userId", "email")
       .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 }),
+      .limit(validatedLimit)
+      .sort({ createdAt: -1 })
+      .select(projection || {}),
     Student.countDocuments(query),
   ]);
 
   return {
     students,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
+    ...buildPaginationMeta(total, validatedPage, validatedLimit),
   };
 };
 

@@ -9,6 +9,13 @@ import {
   assertSchoolMutationAllowed,
   idInObjectIdList,
 } from "../utils/schoolReadAccess.js";
+import {
+  validatePagination,
+  sanitizeSearchQuery,
+  buildPaginationMeta,
+  parseFields,
+} from "../utils/pagination.js";
+import { canAccessClass, assertPermission } from "../utils/permissions.js";
 
 export const createClassService = async (
   data: Partial<IClass>,
@@ -41,26 +48,35 @@ export const getAllClassesService = async (
     search?: string;
     page?: number;
     limit?: number;
+    fields?: string;
+    cursor?: string;
   },
   scope: SchoolReadScope,
 ) => {
   assertSchoolDataAccess(scope);
 
-  const { status, grade, academicYear, search, page = 1, limit = 20 } = filters;
+  const { status, grade, academicYear, search, page, limit, fields, cursor } = filters;
+  
+  // Validate and normalize pagination
+  const { validatedPage, validatedLimit, skip } = validatePagination(page, limit, cursor);
+  
+  // Sanitize search query to prevent ReDoS
+  const sanitizedSearch = sanitizeSearchQuery(search);
 
   const query: Record<string, unknown> = {};
 
   if (status) query.status = status;
   if (grade) query.grade = grade;
   if (academicYear) query.academicYear = academicYear;
-  if (search) {
+  if (sanitizedSearch) {
     query.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { section: { $regex: search, $options: "i" } },
-      { grade: { $regex: search, $options: "i" } },
+      { name: { $regex: sanitizedSearch, $options: "i" } },
+      { section: { $regex: sanitizedSearch, $options: "i" } },
+      { grade: { $regex: sanitizedSearch, $options: "i" } },
     ];
   }
 
+  // Apply scope-based filtering
   if (scope.kind === "teacher") {
     if (scope.taughtClassIds.length === 0) {
       query._id = { $in: [] };
@@ -77,22 +93,22 @@ export const getAllClassesService = async (
     query.$or = orClause;
   }
 
-  const skip = (page - 1) * limit;
+  // Parse field selection
+  const projection = parseFields(fields);
 
   const [classes, total] = await Promise.all([
     Class.find(query)
       .populate("teacherId", "firstName lastName teacherId")
       .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 }),
+      .limit(validatedLimit)
+      .sort({ createdAt: -1 })
+      .select(projection || {}),
     Class.countDocuments(query),
   ]);
 
   return {
     classes,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
+    ...buildPaginationMeta(total, validatedPage, validatedLimit),
   };
 };
 
