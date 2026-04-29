@@ -2,6 +2,7 @@ import type { Types } from "mongoose";
 import Message from "../models/Message.model.js";
 import User from "../models/User.model.js";
 import ApiError from "../utils/ApiError.js";
+import { emitNewMessage, emitUnreadCountUpdate } from "../config/socket.js";
 
 export interface CreateMessageInput {
   receiverId: string;
@@ -36,6 +37,19 @@ export const createMessageService = async (data: CreateMessageInput) => {
     subject: data.subject,
     content: data.content,
   });
+
+  // Populate sender info before emitting
+  const populatedMessage = await message.populate("senderId", "firstname lastname email");
+
+  // Emit real-time notification to receiver
+  emitNewMessage(data.receiverId, populatedMessage);
+
+  // Update unread count for receiver
+  const unreadCount = await Message.countDocuments({
+    receiverId: data.receiverId,
+    isRead: false,
+  });
+  emitUnreadCountUpdate(data.receiverId, unreadCount);
 
   return message;
 };
@@ -151,6 +165,13 @@ export const markAsReadService = async (id: string, userId: string) => {
   message.isRead = true;
   message.readAt = new Date();
   await message.save();
+
+  // Update unread count
+  const unreadCount = await Message.countDocuments({
+    receiverId: userId,
+    isRead: false,
+  });
+  emitUnreadCountUpdate(userId, unreadCount);
 
   return message;
 };
