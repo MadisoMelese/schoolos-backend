@@ -70,7 +70,7 @@ const errorMiddleware: ErrorRequestHandler = (
              ErrorCodes.INTERNAL_ERROR,
     };
     
-    if (env.nodeEnv === "development") {
+    if (env.nodeEnv === "development" && err.stack) {
       response.stack = err.stack;
     }
     
@@ -152,7 +152,7 @@ const errorMiddleware: ErrorRequestHandler = (
       code: ErrorCodes.INTERNAL_ERROR,
     };
     
-    if (env.nodeEnv === "development") {
+    if (env.nodeEnv === "development" && err.stack) {
       response.stack = err.stack;
     }
     

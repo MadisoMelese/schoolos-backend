@@ -9,6 +9,7 @@ import {
   getTeacherDashboardService,
 } from "../services/teacher.service.js";
 import ApiError from "../utils/ApiError.js";
+import type { SchoolReadScope } from "../types/schoolReadScope.js";
 
 export const createTeacher = async (
   req: Request,
@@ -147,9 +148,9 @@ export const getTeacherClassStudents = async (
     
     // If no id param (route is /me/class-students), use "me"
     // If id is provided, use it (could be "me" or actual ID)
-    const teacherId = id || "me";
+    const teacherId = (Array.isArray(id) ? id[0] : id) || "me";
 
-    const result = await getTeacherClassStudentsService(teacherId, scope);
+    const result = await getTeacherClassStudentsService(teacherId, scope as SchoolReadScope);
     res.status(200).json({
       success: true,
       data: result,

@@ -14,13 +14,60 @@ const app: Application = express();
 
 // ─── Global Middlewares ───────────────────────────────────────────────────────
 
-app.use(helmet());
+// Configure helmet with comprehensive security headers
+app.use(
+  helmet({
+    // Content-Security-Policy
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", env.clientUrl],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    },
+    // HTTP Strict Transport Security (HSTS)
+    hsts: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    // Cross-Origin-Opener-Policy
+    crossOriginOpenerPolicy: {
+      policy: "same-origin",
+    },
+    // X-Frame-Options
+    frameguard: {
+      action: "deny",
+    },
+    // Additional security headers
+    xssFilter: true,
+    noSniff: true,
+    referrerPolicy: {
+      policy: "strict-origin-when-cross-origin",
+    },
+  })
+);
 
 const corsOptions: cors.CorsOptions = {
   origin: (requestOrigin: string | undefined, callback: (err: Error | null, origin?: boolean) => void) => {
-    if (!requestOrigin) return callback(null, true); // allow Postman, curl
+    if (!requestOrigin) return callback(null, true); // allow Postman, curl, server-to-server
 
-    if (requestOrigin === env.clientUrl) {
+    // Support multiple allowed origins (comma-separated in CLIENT_URL)
+    const allowedOrigins = env.clientUrl
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+
+    // Also allow any Vercel preview deployment for the same project
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+-[a-z0-9]+-[a-z0-9]+\.vercel\.app$/.test(requestOrigin);
+
+    if (allowedOrigins.includes(requestOrigin) || isVercelPreview) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
