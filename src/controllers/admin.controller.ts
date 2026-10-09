@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 // Get all users with filtering
 export const getAllUsers: RequestHandler = async (req, res, next) => {
   try {
-    const { search, role, isActive, page = 1, limit = 20 } = req.query;
+    const { search, role, isActive, isBlocked, page = 1, limit = 20 } = req.query;
 
     const query: Record<string, unknown> = {};
 
@@ -25,6 +25,7 @@ export const getAllUsers: RequestHandler = async (req, res, next) => {
 
     if (role) query.role = role;
     if (isActive !== undefined) query.isActive = isActive === "true";
+    if (isBlocked !== undefined) query.isBlocked = isBlocked === "true";
 
     const skip = (Number(page) - 1) * Number(limit);
 

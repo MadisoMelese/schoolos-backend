@@ -203,6 +203,16 @@ export const getUnreadCountService = async (userId: string) => {
   return { unreadCount: count };
 };
 
+export const markAllAsReadService = async (userId: string) => {
+  await Message.updateMany(
+    { receiverId: userId, isRead: false },
+    { $set: { isRead: true, readAt: new Date() } },
+  );
+
+  emitUnreadCountUpdate(userId, 0);
+  return { unreadCount: 0 };
+};
+
 
 export const getAllMessagesService = async (
   filters: {

@@ -18,6 +18,7 @@ import messageRoutes from "./message.routes.js";
 import libraryRoutes from "./library.routes.js";
 import hrRoutes from "./hr.routes.js";
 import adminRoutes from "./admin.routes.js";
+import schoolSiteRoutes from "./schoolSite.routes.js";
 
 const router = Router();
 
@@ -41,5 +42,6 @@ router.use("/messages", messageRoutes);
 router.use("/library", libraryRoutes);
 router.use("/hr", hrRoutes);
 router.use("/admin", adminRoutes);
+router.use("/school-site", schoolSiteRoutes);
 
 export default router;

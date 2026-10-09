@@ -7,6 +7,7 @@ import {
   markAsReadService,
   deleteMessageService,
   getUnreadCountService,
+  markAllAsReadService,
   getAllMessagesService,
 } from "../services/message.service.js";
 import ApiError from "../utils/ApiError.js";
@@ -153,6 +154,24 @@ export const getUnreadCount = async (
     if (!req.user) throw new ApiError(401, "Unauthorized");
     const result = await getUnreadCountService(req.user._id.toString());
     res.status(200).json({ success: true, data: result, message: "Unread count fetched successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markAllAsRead = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) throw new ApiError(401, "Unauthorized");
+    const result = await markAllAsReadService(req.user._id.toString());
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "All messages marked as read",
+    });
   } catch (error) {
     next(error);
   }

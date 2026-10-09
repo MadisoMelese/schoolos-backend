@@ -7,6 +7,7 @@ import {
   markAsRead,
   deleteMessage,
   getUnreadCount,
+  markAllAsRead,
   getAllMessages,
 } from "../controllers/message.controller.js";
 import protect from "../middlewares/auth.middleware.js";
@@ -21,6 +22,7 @@ router.use(protect);
 router.get("/inbox", getInbox);
 router.get("/sent", getSent);
 router.get("/unread-count", getUnreadCount);
+router.patch("/read-all", markAllAsRead);
 router.get("/admin/all", adminOnly, getAllMessages);
 router.get("/:id", getMessageById);
 
